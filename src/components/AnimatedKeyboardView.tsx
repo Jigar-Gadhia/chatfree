@@ -42,7 +42,7 @@ export default function AnimatedKeyboardView({
             showSub.remove();
             hideSub.remove();
         };
-    }, []);
+    }, [translateY]);
 
     return (
         <Animated.View style={{ transform: [{ translateY }], overflow: 'hidden' }}>

@@ -1,288 +1,466 @@
-// src/screens/ChatScreen.tsx
-
-import { MODELS } from "@/src/data/models";
-import { useChatStore } from "@/src/store/chatStore";
+import AnimatedKeyboardView from "@/src/components/AnimatedKeyboardView";
+import ScreenContainer from "@/src/components/ScreenContainer";
+import { createIndexStyles } from "./index.styles";
+import { ChatDrawer } from "@/src/components/chat/ChatDrawer";
+import { ChatMessageRow } from "@/src/components/chat/ChatMessageRow";
+import AppButton from "@/src/components/ui/AppButton";
+import AppText from "@/src/components/ui/AppText";
+import AppTextInput from "@/src/components/ui/AppTextInput";
+import { useAppColors } from "@/src/hooks/useAppColors";
+import { Message, useChatStore } from "@/src/store/chatStore";
 import { useModelStore } from "@/src/store/modelStore";
-import React, { useEffect, useState } from "react";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import * as Clipboard from "expo-clipboard";
+import * as FileSystem from "expo-file-system/legacy";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import * as Sharing from "expo-sharing";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Keyboard,
-  Text,
+  ListRenderItemInfo,
+  Platform,
   TextInput,
-  TouchableOpacity,
-  View
+  View,
 } from "react-native";
-
-import AnimatedKeyboardView from "@/src/components/AnimatedKeyboardView";
-import ScreenContainer from "@/src/components/ScreenContainer";
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRouter } from "expo-router";
 
 export default function ChatScreen() {
   const [input, setInput] = useState("");
+  const [editingUserMessageId, setEditingUserMessageId] = useState<string | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const appColors = useAppColors();
+  const styles = useMemo(() => createIndexStyles(appColors), [appColors]);
+  const flatListRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
+  const hasAutoFocusedRef = useRef(false);
+  const shouldAutoScrollRef = useRef(true);
+  const followStreamingRef = useRef(true);
+  const lastAutoScrollAtRef = useRef(0);
 
-  const { messages, sendMessage, loading, streaming, clearChat, stopStreaming } = useChatStore();
-  const { selectedModelId, init, isModelLoading } = useModelStore();
+  const {
+    chats,
+    activeChatId,
+    sendMessage,
+    loading,
+    streaming,
+    stopStreaming,
+    init,
+    createNewChat,
+    selectChat,
+    deleteChat,
+    regenerateAssistant,
+    editUserMessage,
+  } = useChatStore();
+  const { selectedModelId, init: initModels, isModelLoading } = useModelStore();
   const router = useRouter();
-  const flatListRef = React.useRef<FlatList>(null);
-
-  // ✅ Removed installedModels filter logic from here
 
   useEffect(() => {
+    initModels();
     init();
-  }, []);
+  }, [init, initModels]);
 
-  // ✅ Auto-scroll to bottom
-  useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+  const activeChat = useMemo(
+    () => chats.find((chat) => chat.id === activeChatId),
+    [chats, activeChatId],
+  );
+  const messages = useMemo(() => activeChat?.messages ?? [], [activeChat]);
+  const latestAssistantMessageId = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index].role === "assistant") return messages[index].id;
     }
-  }, [messages]);
 
-  // ✅ Get readable name
-  const getModelName = (id: string) => {
-    const model = MODELS.find((m) => m.id === id);
-    return model?.name || id;
+    return null;
+  }, [messages]);
+  const latestAssistantText = useMemo(() => {
+    if (!latestAssistantMessageId) return "";
+    return (
+      messages.find((message) => message.id === latestAssistantMessageId)?.text ?? ""
+    );
+  }, [latestAssistantMessageId, messages]);
+
+  const canSend =
+    input.trim().length > 0 && !!selectedModelId && !isModelLoading;
+  const listBottomPadding = 18 + 78 + keyboardHeight;
+
+  const scrollToBottom = (animated = true) => {
+    requestAnimationFrame(() => {
+      flatListRef.current?.scrollToEnd({ animated });
+    });
   };
 
-  // ✅ Send handler
-  const handleSend = async () => {
+  useEffect(() => {
+    if (messages.length) {
+      scrollToBottom(!streaming);
+    }
+  }, [activeChatId, messages.length, streaming]);
 
+  useEffect(() => {
+    if (streaming) {
+      followStreamingRef.current = true;
+      shouldAutoScrollRef.current = true;
+    }
+  }, [streaming, activeChatId]);
+
+  useEffect(() => {
+    if (!streaming || !followStreamingRef.current) return;
+    scrollToBottom(false);
+  }, [latestAssistantText, streaming]);
+
+  useEffect(() => {
+    if (hasAutoFocusedRef.current) return;
+    if (!activeChatId) return;
+    if (!selectedModelId) return;
+    if (streaming || isModelLoading) return;
+
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+      hasAutoFocusedRef.current = true;
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [activeChatId, isModelLoading, selectedModelId, streaming]);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const onShow = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates.height);
+    });
+    const onHide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      onShow.remove();
+      onHide.remove();
+    };
+  }, []);
+
+  const handleSend = async () => {
     if (!selectedModelId) {
       router.push("/modelscreen");
       return;
     }
-    if (!input.trim()) return;
+
+    const text = input.trim();
+    if (!text || isModelLoading || streaming) return;
 
     setInput("");
+    const editingId = editingUserMessageId;
+    setEditingUserMessageId(null);
     Keyboard.dismiss();
-    await sendMessage(input);
+    if (editingId) {
+      await editUserMessage(editingId, text);
+      return;
+    }
+
+    await sendMessage(text);
   };
 
-  console.log("selectedModelId", selectedModelId);
+  const handleCreateNewChat = () => {
+    createNewChat();
+    setInput("");
+    setEditingUserMessageId(null);
+    closeDrawer();
+  };
+
+  const handleSelectChat = (chatId: string) => {
+    selectChat(chatId);
+    setInput("");
+    setEditingUserMessageId(null);
+    closeDrawer();
+  };
+
+  const handleOpenSettings = () => {
+    closeDrawer();
+    router.push("/settings");
+  };
+
+  const handleCopyMessage = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+    await Clipboard.setStringAsync(text);
+  }, []);
+
+  const handleShareMessage = useCallback(async (text: string) => {
+    const content = text.trim();
+    if (!content) return;
+
+    if (!(await Sharing.isAvailableAsync())) {
+      await Clipboard.setStringAsync(content);
+      return;
+    }
+
+    const fileUri = `${FileSystem.cacheDirectory}chat-share-${Date.now()}.txt`;
+
+    try {
+      await FileSystem.writeAsStringAsync(fileUri, content, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      await Sharing.shareAsync(fileUri, {
+        dialogTitle: "Share message",
+        mimeType: "text/plain",
+        UTI: "public.plain-text",
+      });
+    } finally {
+      await FileSystem.deleteAsync(fileUri, { idempotent: true });
+    }
+  }, []);
+
+  const handleRegenerate = useCallback(async (messageId: string) => {
+    if (streaming || isModelLoading || !selectedModelId) return;
+    await regenerateAssistant(messageId);
+  }, [isModelLoading, regenerateAssistant, selectedModelId, streaming]);
+
+  const handleEditMessage = useCallback((messageId: string, text: string) => {
+    if (streaming || isModelLoading) return;
+    setEditingUserMessageId(messageId);
+    setInput(text);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  }, [isModelLoading, streaming]);
+
+  const renderMessageItem = useCallback(
+    ({ item, index }: ListRenderItemInfo<Message>) => (
+      <ChatMessageRow
+        styles={styles}
+        appColors={appColors}
+        item={item}
+        index={index}
+        messages={messages}
+        loading={loading}
+        streaming={streaming}
+        latestAssistantMessageId={latestAssistantMessageId}
+        selectedModelId={selectedModelId}
+        isModelLoading={isModelLoading}
+        onCopy={handleCopyMessage}
+        onShare={handleShareMessage}
+        onRegenerate={handleRegenerate}
+        onEdit={handleEditMessage}
+      />
+    ),
+    [
+      appColors,
+      handleCopyMessage,
+      handleEditMessage,
+      handleRegenerate,
+      handleShareMessage,
+      isModelLoading,
+      latestAssistantMessageId,
+      loading,
+      messages,
+      selectedModelId,
+      styles,
+      streaming,
+    ],
+  );
+
+  const openDrawer = () => setDrawerVisible(true);
+  const closeDrawer = () => setDrawerVisible(false);
 
   return (
-    <ScreenContainer title="Chat">
-      {/* 🔝 Model Info / Selection */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingHorizontal: 16,
-          paddingVertical: 10,
-          backgroundColor: "#161622",
-          borderBottomWidth: 1,
-          borderBottomColor: "#1f1f2e",
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-          <View
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: selectedModelId ? "#4CAF50" : "#ff6b6b",
-              marginRight: 8,
-            }}
-          />
-          <Text style={{ color: "#aaa", fontSize: 13 }} numberOfLines={1}>
-            {selectedModelId
-              ? `Using ${getModelName(selectedModelId)}`
-              : "No model selected"}
-          </Text>
-        </View>
-
-        <View style={{ flexDirection: "row", gap: 12 }}>
-          <TouchableOpacity
-            onPress={() => router.push("/modelscreen")}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingHorizontal: 10,
-              paddingVertical: 5,
-              borderRadius: 8,
-              backgroundColor: "#1E1E2E",
-            }}
-          >
-            <Ionicons name="settings-outline" size={14} color="#6C5CE7" style={{ marginRight: 4 }} />
-            <Text style={{ color: "#6C5CE7", fontSize: 12, fontWeight: "600" }}>
-              Models
-            </Text>
-          </TouchableOpacity>
-
-          {messages.length > 0 && (
-            <TouchableOpacity
-              onPress={clearChat}
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-                borderRadius: 8,
-                backgroundColor: "#1E1E2E",
-              }}
-            >
-              <Ionicons name="trash-outline" size={14} color="#ff6b6b" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* 💬 Messages */}
+    <ScreenContainer style={styles.screenContainer}>
       <FlatList
         ref={flatListRef}
         data={messages}
-        keyboardShouldPersistTaps='handled'
+        keyExtractor={(item) => item.id}
+        renderItem={renderMessageItem}
+        style={styles.list}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="none"
         overScrollMode="never"
         showsVerticalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
-        style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        removeClippedSubviews
+        initialNumToRender={12}
+        maxToRenderPerBatch={8}
+        updateCellsBatchingPeriod={16}
+        windowSize={7}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: listBottomPadding },
+        ]}
+        onScroll={(event) => {
+          const { y } = event.nativeEvent.contentOffset;
+          const viewportHeight = event.nativeEvent.layoutMeasurement.height;
+          const contentHeight = event.nativeEvent.contentSize.height;
+          const distanceFromBottom = contentHeight - (y + viewportHeight);
+
+          const isNearBottom = distanceFromBottom < 140;
+          shouldAutoScrollRef.current = isNearBottom;
+          if (!isNearBottom && streaming) {
+            followStreamingRef.current = false;
+          }
+          if (isNearBottom && !streaming) {
+            followStreamingRef.current = true;
+          }
+        }}
+        onScrollBeginDrag={() => {
+          if (streaming) {
+            followStreamingRef.current = false;
+          }
+        }}
+        onMomentumScrollEnd={() => {
+          if (shouldAutoScrollRef.current) {
+            followStreamingRef.current = true;
+          }
+        }}
+        onScrollEndDrag={() => {
+          if (shouldAutoScrollRef.current) {
+            followStreamingRef.current = true;
+          }
+        }}
+        scrollEventThrottle={16}
+        onContentSizeChange={() => {
+          if (!shouldAutoScrollRef.current && !followStreamingRef.current) return;
+
+          const now = Date.now();
+          if (streaming && now - lastAutoScrollAtRef.current < 45) return;
+          lastAutoScrollAtRef.current = now;
+
+          scrollToBottom(!streaming);
+        }}
+        onLayout={() => {
+          if (messages.length) {
+            scrollToBottom(false);
+          }
+        }}
         ListEmptyComponent={
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 100 }}>
-            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#1E1E2E', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-              <Ionicons name="chatbubbles-outline" size={40} color="#6C5CE7" />
+          <View style={styles.emptyWrap}>
+            <View style={styles.logoBubble}>
+              <Ionicons name="sparkles" size={26} color={appColors.text.secondary} />
             </View>
-            <Text style={{ color: 'white', fontSize: 20, fontWeight: '700', marginBottom: 8 }}>
-              Start Chatting
-            </Text>
-            <Text style={{ color: '#aaa', fontSize: 14, textAlign: 'center', paddingHorizontal: 40 }}>
+            <AppText variant="title" style={styles.emptyTitle}>
+              How can I help today?
+            </AppText>
+            <AppText variant="body" style={styles.emptySubtext}>
               {selectedModelId
-                ? "Type something below to start a conversation with the AI."
-                : "First, select a model to start talking."}
-            </Text>
+                ? "Ask anything to start the conversation."
+                : "Choose a model first, then ask your question."}
+            </AppText>
           </View>
         }
-        renderItem={({ item, index }) => {
-          const isUser = item.role === "user";
-          const isLastAssistant =
-            !isUser &&
-            index === messages.length - 1 &&
-            streaming;
-          return (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignSelf: isUser ? "flex-end" : "flex-start",
-                maxWidth: "85%",
-                marginVertical: 4,
-                alignItems: 'flex-end',
-              }}
-            >
-              {!isUser && (
-                <View style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
-                  backgroundColor: '#6C5CE7',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 8,
-                }}>
-                  <Ionicons name="sparkles" size={14} color="white" />
-                </View>
-              )}
-              <View
-                style={{
-                  backgroundColor: isUser ? "#6C5CE7" : "#1E1E2E",
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 18,
-                  borderBottomRightRadius: isUser ? 4 : 18,
-                  borderBottomLeftRadius: isUser ? 18 : 4,
-                }}
-              >
-                <Text style={{ color: "white", fontSize: 15, lineHeight: 20 }}>
-                  {item.text}{isLastAssistant ? <Text style={{ color: '#6C5CE7' }}>{'|'}</Text> : null}
-                </Text>
-              </View>
-            </View>
-          );
-        }}
       />
 
-      {/* ✍️ Input */}
-      <AnimatedKeyboardView>
-        <View
-          style={{
-            flexDirection: "row",
-            padding: 10,
-            borderTopWidth: 1,
-            borderColor: "#222",
-            backgroundColor: "#0f0f1a",
-          }}
-        >
-          <TextInput
-            value={input}
-            onChangeText={setInput}
-            placeholder={selectedModelId ? "Ask something..." : "Select a model to start..."}
-            placeholderTextColor="#888"
-            multiline
-            style={{
-              flex: 1,
-              backgroundColor: "#1E1E2E",
-              color: "white",
-              borderRadius: 12,
-              paddingHorizontal: 12,
-              paddingTop: 10,
-              paddingBottom: 10,
-              minHeight: 44,
-              maxHeight: 120,
-            }}
-            editable={!isModelLoading && !streaming}
-          />
+      <LinearGradient
+        pointerEvents="none"
+        colors={appColors.gradient.topOverlay}
+        locations={[0, 0.22, 0.5, 0.78, 1]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topOverlayGradient}
+      />
 
-          <TouchableOpacity
-            onPress={streaming ? stopStreaming : handleSend}
-            disabled={isModelLoading}
-            style={{
-              marginLeft: 10,
-              width: 44,
-              height: 44,
-              backgroundColor: streaming ? "#ff6b6b" : "#6C5CE7",
-              justifyContent: "center",
-              alignItems: "center",
-              borderRadius: 12,
-              opacity: isModelLoading ? 0.5 : 1,
-            }}
-          >
-            <Ionicons
-              name={streaming ? "stop-circle" : (selectedModelId ? "send" : "settings-outline")}
-              size={20}
-              color="white"
-            />
-          </TouchableOpacity>
+      <View style={styles.topBar}>
+        <AppButton
+          onPress={openDrawer}
+          style={styles.floatingPill}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="menu" size={25} color={appColors.icon.primary} />
+        </AppButton>
+
+        <AppButton
+          onPress={handleCreateNewChat}
+          style={styles.floatingPill}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={25} color={appColors.icon.primary} />
+        </AppButton>
+      </View>
+
+      {(loading || isModelLoading) && !streaming ? (
+        <View style={styles.thinkingBar}>
+          <Ionicons name="ellipsis-horizontal" size={16} color={appColors.icon.muted} />
+          <AppText variant="caption" style={styles.thinkingText}>
+            {isModelLoading ? "Loading model..." : "Thinking..."}
+          </AppText>
+        </View>
+      ) : null}
+
+      <AnimatedKeyboardView>
+        <View style={styles.composerWrap}>
+          {selectedModelId ? (
+            <View style={styles.composerInner}>
+              <AppTextInput
+                ref={inputRef}
+                value={input}
+                onChangeText={setInput}
+                placeholder={editingUserMessageId ? "Edit your message" : "Message Chat"}
+                placeholderTextColor={appColors.text.weak}
+                multiline
+                maxLength={6000}
+                textAlignVertical="top"
+                inputStyle={styles.input}
+                editable={!isModelLoading && !streaming}
+              />
+
+              <AppButton
+                onPress={streaming ? stopStreaming : handleSend}
+                disabled={streaming ? false : !canSend}
+                style={[
+                  styles.sendButton,
+                  streaming
+                    ? styles.stopButton
+                    : canSend
+                      ? styles.sendButtonEnabled
+                      : styles.sendButtonDisabled,
+                ]}
+                activeOpacity={0.85}
+              >
+                <Ionicons
+                  name={streaming ? "stop" : "arrow-up"}
+                  size={18}
+                  color={streaming || canSend ? appColors.icon.inverse : appColors.icon.muted}
+                />
+              </AppButton>
+            </View>
+          ) : (
+            <AppButton
+              onPress={() => router.push("/modelscreen")}
+              style={styles.chooseModelButton}
+              activeOpacity={0.88}
+              accessibilityRole="button"
+              accessibilityLabel="Choose model"
+            >
+              <View style={styles.chooseModelLeft}>
+                <View style={styles.chooseModelIconWrap}>
+                  <Ionicons
+                    name="hardware-chip-outline"
+                    size={16}
+                    color={appColors.icon.secondary}
+                  />
+                </View>
+                <View style={styles.chooseModelTextWrap}>
+                  <AppText variant="body" style={styles.chooseModelTitle}>
+                    Choose model
+                  </AppText>
+                  <AppText variant="caption" style={styles.chooseModelSubtitle}>
+                    Select a model to start chatting
+                  </AppText>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={appColors.icon.muted} />
+            </AppButton>
+          )}
         </View>
       </AnimatedKeyboardView>
 
-      {/* ⏳ Loading / Model Loading only (not while streaming — tokens handle that) */}
-      {(loading || isModelLoading) && !streaming && (
-        <View style={{
-          paddingHorizontal: 16,
-          paddingVertical: 8,
-          alignItems: 'flex-start',
-          flexDirection: 'row',
-          backgroundColor: '#0f0f1a',
-        }}>
-          <View style={{
-            backgroundColor: '#1E1E2E',
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 12,
-            borderBottomLeftRadius: 2,
-            flexDirection: 'row',
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: '#222',
-          }}>
-            <Ionicons name="ellipsis-horizontal" size={16} color="#aaa" />
-            <Text style={{ color: "#aaa", fontSize: 12, marginLeft: 8 }}>
-              {isModelLoading ? "Loading engine..." : "Thinking..."}
-            </Text>
-          </View>
-        </View>
-      )}
+      <ChatDrawer
+        visible={drawerVisible}
+        chats={chats}
+        activeChatId={activeChatId}
+        onClose={closeDrawer}
+        onOpenSettings={handleOpenSettings}
+        onSelectChat={handleSelectChat}
+        onDeleteChat={deleteChat}
+        appColors={appColors}
+      />
     </ScreenContainer>
   );
 }

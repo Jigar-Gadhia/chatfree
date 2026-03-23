@@ -1,6 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { AppColorsType } from "@/constants/theme";
+import { useAppColors } from "@/src/hooks/useAppColors";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -15,62 +17,94 @@ export default function ScreenContainer({
   title,
   children,
   showBack = false,
-  style
+  style,
 }: Props) {
   const router = useRouter();
+  const appColors = useAppColors();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
 
   return (
     <SafeAreaView style={[styles.container, style]} edges={["top", "bottom"]}>
-      {/* 🔝 Header */}
       {(title || showBack) && (
-        <View style={styles.header}>
-          {/* Back Button */}
-          {showBack ? (
-            <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="chevron-back" size={24} color="white" />
-            </TouchableOpacity>
-          ) : (
-            <View style={{ width: 24 }} />
-          )}
+        <View style={styles.headerWrap}>
+          <View style={styles.header}>
+            {showBack ? (
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.backButton}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="chevron-back" size={20} color={appColors.icon.primary} />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.sideSlot} />
+            )}
 
-          {/* Title */}
-          <Text style={styles.title}>{title}</Text>
+            <Text style={styles.title} numberOfLines={1}>
+              {title}
+            </Text>
 
-          {/* Right Placeholder (for balance) */}
-          <View style={{ width: 24 }} />
+            <View style={styles.sideSlot} />
+          </View>
         </View>
       )}
 
-      {/* 📦 Content */}
       <View style={styles.content}>{children}</View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#0f0f1a",
-  },
-  header: {
-    height: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1f1f2e",
-  },
-  back: {
-    fontSize: 30,
-    color: "white",
-  },
-  title: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  content: {
-    flex: 1,
-  },
-});
+const createStyles = (appColors: AppColorsType) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: appColors.bg.container,
+    },
+    headerWrap: {
+      paddingHorizontal: 12,
+      paddingTop: 8,
+      paddingBottom: 8,
+    },
+    header: {
+      minHeight: 56,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 10,
+      backgroundColor: appColors.bg.surface,
+      borderWidth: 1,
+      borderBottomColor: appColors.border.default,
+      borderColor: appColors.border.default,
+      borderRadius: 16,
+      shadowColor: appColors.shadow.base,
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 3,
+    },
+    backButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: appColors.bg.input,
+      borderWidth: 1,
+      borderColor: appColors.border.subtle,
+    },
+    sideSlot: {
+      width: 36,
+      height: 36,
+    },
+    title: {
+      color: appColors.text.secondary,
+      fontSize: 17,
+      fontWeight: "700",
+      flex: 1,
+      textAlign: "center",
+      paddingHorizontal: 8,
+    },
+    content: {
+      flex: 1,
+    },
+  });

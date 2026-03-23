@@ -7,6 +7,8 @@ export type Model = {
   url: string;
   format: "plain" | "qwen" | "chatml";
   nPredict: number;
+  recommendation?: string;
+  features?: string[];
   stop?: string[];
   systemPrompt?: string;
 };
