@@ -1,21 +1,27 @@
 import AnimatedKeyboardView from "@/src/components/AnimatedKeyboardView";
-import ScreenContainer from "@/src/components/ScreenContainer";
-import { createIndexStyles } from "./index.styles";
 import { ChatDrawer } from "@/src/components/chat/ChatDrawer";
 import { ChatMessageRow } from "@/src/components/chat/ChatMessageRow";
+import ScreenContainer from "@/src/components/ScreenContainer";
 import AppButton from "@/src/components/ui/AppButton";
 import AppText from "@/src/components/ui/AppText";
 import AppTextInput from "@/src/components/ui/AppTextInput";
 import { useAppColors } from "@/src/hooks/useAppColors";
 import { Message, useChatStore } from "@/src/store/chatStore";
 import { useModelStore } from "@/src/store/modelStore";
+import { createIndexStyles } from "@/src/styles/index.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system/legacy";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   FlatList,
   Keyboard,
@@ -27,7 +33,9 @@ import {
 
 export default function ChatScreen() {
   const [input, setInput] = useState("");
-  const [editingUserMessageId, setEditingUserMessageId] = useState<string | null>(null);
+  const [editingUserMessageId, setEditingUserMessageId] = useState<
+    string | null
+  >(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const appColors = useAppColors();
@@ -76,7 +84,8 @@ export default function ChatScreen() {
   const latestAssistantText = useMemo(() => {
     if (!latestAssistantMessageId) return "";
     return (
-      messages.find((message) => message.id === latestAssistantMessageId)?.text ?? ""
+      messages.find((message) => message.id === latestAssistantMessageId)
+        ?.text ?? ""
     );
   }, [latestAssistantMessageId, messages]);
 
@@ -212,19 +221,25 @@ export default function ChatScreen() {
     }
   }, []);
 
-  const handleRegenerate = useCallback(async (messageId: string) => {
-    if (streaming || isModelLoading || !selectedModelId) return;
-    await regenerateAssistant(messageId);
-  }, [isModelLoading, regenerateAssistant, selectedModelId, streaming]);
+  const handleRegenerate = useCallback(
+    async (messageId: string) => {
+      if (streaming || isModelLoading || !selectedModelId) return;
+      await regenerateAssistant(messageId);
+    },
+    [isModelLoading, regenerateAssistant, selectedModelId, streaming],
+  );
 
-  const handleEditMessage = useCallback((messageId: string, text: string) => {
-    if (streaming || isModelLoading) return;
-    setEditingUserMessageId(messageId);
-    setInput(text);
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
-  }, [isModelLoading, streaming]);
+  const handleEditMessage = useCallback(
+    (messageId: string, text: string) => {
+      if (streaming || isModelLoading) return;
+      setEditingUserMessageId(messageId);
+      setInput(text);
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    },
+    [isModelLoading, streaming],
+  );
 
   const renderMessageItem = useCallback(
     ({ item, index }: ListRenderItemInfo<Message>) => (
@@ -317,7 +332,8 @@ export default function ChatScreen() {
         }}
         scrollEventThrottle={16}
         onContentSizeChange={() => {
-          if (!shouldAutoScrollRef.current && !followStreamingRef.current) return;
+          if (!shouldAutoScrollRef.current && !followStreamingRef.current)
+            return;
 
           const now = Date.now();
           if (streaming && now - lastAutoScrollAtRef.current < 45) return;
@@ -333,7 +349,11 @@ export default function ChatScreen() {
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <View style={styles.logoBubble}>
-              <Ionicons name="sparkles" size={26} color={appColors.text.secondary} />
+              <Ionicons
+                name="sparkles"
+                size={26}
+                color={appColors.text.secondary}
+              />
             </View>
             <AppText variant="title" style={styles.emptyTitle}>
               How can I help today?
@@ -376,7 +396,11 @@ export default function ChatScreen() {
 
       {(loading || isModelLoading) && !streaming ? (
         <View style={styles.thinkingBar}>
-          <Ionicons name="ellipsis-horizontal" size={16} color={appColors.icon.muted} />
+          <Ionicons
+            name="ellipsis-horizontal"
+            size={16}
+            color={appColors.icon.muted}
+          />
           <AppText variant="caption" style={styles.thinkingText}>
             {isModelLoading ? "Loading model..." : "Thinking..."}
           </AppText>
@@ -391,7 +415,9 @@ export default function ChatScreen() {
                 ref={inputRef}
                 value={input}
                 onChangeText={setInput}
-                placeholder={editingUserMessageId ? "Edit your message" : "Message Chat"}
+                placeholder={
+                  editingUserMessageId ? "Edit your message" : "Message Chat"
+                }
                 placeholderTextColor={appColors.text.weak}
                 multiline
                 maxLength={6000}
@@ -416,7 +442,11 @@ export default function ChatScreen() {
                 <Ionicons
                   name={streaming ? "stop" : "arrow-up"}
                   size={18}
-                  color={streaming || canSend ? appColors.icon.inverse : appColors.icon.muted}
+                  color={
+                    streaming || canSend
+                      ? appColors.icon.inverse
+                      : appColors.icon.muted
+                  }
                 />
               </AppButton>
             </View>
@@ -445,7 +475,11 @@ export default function ChatScreen() {
                   </AppText>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={16} color={appColors.icon.muted} />
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={appColors.icon.muted}
+              />
             </AppButton>
           )}
         </View>
