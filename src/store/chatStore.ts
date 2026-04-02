@@ -2,12 +2,28 @@ import { Directory, Paths } from "expo-file-system";
 import * as FileSystem from "expo-file-system/legacy";
 import { create } from "zustand";
 import { generateStream, stopGeneration } from "../ai/llm";
+import {
+  buildWebGroundedPrompt,
+  searchWeb,
+  WebSearchResult,
+} from "../ai/webSearch";
 import { useModelStore } from "./modelStore";
+
+type MessageSource = {
+  title: string;
+  url: string;
+};
+
+type MessageAttachment = {
+  name: string;
+};
 
 type Message = {
   id: string;
   text: string;
   role: "user" | "assistant";
+  sources?: MessageSource[];
+  attachments?: MessageAttachment[];
 };
 
 type ChatSession = {
@@ -23,9 +39,23 @@ type ChatStore = {
   activeChatId: string;
   loading: boolean;
   streaming: boolean;
+  webSearchStatus:
+    | "idle"
+    | "rewriting"
+    | "searching"
+    | "reranking"
+    | "processing"
+    | "failed";
 
   init: () => Promise<void>;
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (
+    text: string,
+    options?: {
+      useWebSearch?: boolean;
+      documentContext?: string;
+      userAttachments?: MessageAttachment[];
+    }
+  ) => Promise<void>;
   stopStreaming: () => void;
   clearChat: () => void;
   createNewChat: () => string;
@@ -111,7 +141,7 @@ const loadPersistedChatState = async (): Promise<{
 
 export const useChatStore = create<ChatStore>((set, get) => {
   const initialChat = makeChat();
-  const streamFlushIntervalMs = 16;
+  const streamFlushIntervalMs = 8;
 
   const appendAssistantChunk = (
     chatId: string,
@@ -139,11 +169,46 @@ export const useChatStore = create<ChatStore>((set, get) => {
     }));
   };
 
+  const setAssistantSources = (
+    chatId: string,
+    assistantMessageId: string,
+    results: WebSearchResult[]
+  ) => {
+    const sources: MessageSource[] = results
+      .map((result) => ({
+        title: result.title,
+        url: result.link,
+      }))
+      .filter((source) => source.title && source.url);
+
+    if (!sources.length) return;
+
+    set((state) => ({
+      chats: state.chats.map((chat) => {
+        if (chat.id !== chatId) return chat;
+
+        return {
+          ...chat,
+          messages: chat.messages.map((message) =>
+            message.id === assistantMessageId
+              ? {
+                  ...message,
+                  sources,
+                }
+              : message
+          ),
+          updatedAt: Date.now(),
+        };
+      }),
+    }));
+  };
+
   return {
     chats: [initialChat],
     activeChatId: initialChat.id,
     loading: false,
     streaming: false,
+    webSearchStatus: "idle",
 
     init: async () => {
       try {
@@ -239,12 +304,15 @@ export const useChatStore = create<ChatStore>((set, get) => {
       persistChats(sorted, activeChatId);
     },
 
-    sendMessage: async (text) => {
+    sendMessage: async (text, options) => {
       const { selectedModelId } = useModelStore.getState();
       if (!selectedModelId) return;
 
       const content = text.trim();
       if (!content) return;
+      const useWebSearch = options?.useWebSearch === true;
+      const documentContext = options?.documentContext?.trim() || "";
+      const userAttachments = options?.userAttachments ?? [];
 
       const chatId = get().activeChatId;
       const userId = makeId();
@@ -255,6 +323,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
         id: userId,
         text: content,
         role: "user",
+        attachments: userAttachments,
       };
 
       const botMessage: Message = {
@@ -292,12 +361,100 @@ export const useChatStore = create<ChatStore>((set, get) => {
           chats: sortChats(chats),
           loading: true,
           streaming: false,
+          webSearchStatus: useWebSearch ? "rewriting" : "idle",
         };
       });
 
       persistChats(get().chats, get().activeChatId);
 
       try {
+        let historyForGeneration = historyForModel;
+        const hasGenerationContext = documentContext.length > 0 || useWebSearch;
+        let generationUserText = content;
+
+        if (documentContext) {
+          generationUserText = [
+            "Attached PDF context:",
+            documentContext,
+            "",
+            `User question: ${content}`,
+          ].join("\n");
+        }
+
+        if (useWebSearch) {
+          try {
+            const webResults = await searchWeb(content, (stage) => {
+              set({ webSearchStatus: stage });
+            });
+            if (webResults.length === 0) {
+              throw new Error("No web results returned for this query.");
+            }
+
+            set({ webSearchStatus: "processing" });
+
+            if (historyForModel.length > 0) {
+              const lastIndex = historyForModel.length - 1;
+              const lastMessage = historyForModel[lastIndex];
+
+              if (lastMessage.role === "user") {
+                const groundedUserPrompt = buildWebGroundedPrompt(
+                  generationUserText,
+                  webResults
+                );
+
+                historyForGeneration = [
+                  ...historyForModel.slice(0, lastIndex),
+                  { role: "user", text: groundedUserPrompt },
+                ];
+              }
+            }
+
+            setAssistantSources(chatId, botId, webResults);
+          } catch (error) {
+            const reason =
+              error instanceof Error ? error.message : "Unknown web search error.";
+            console.log("Web search error", error);
+
+            set((state) => {
+              const chats = state.chats.map((chat) => {
+                if (chat.id !== chatId) return chat;
+
+                return {
+                  ...chat,
+                  messages: chat.messages.map((msg) =>
+                    msg.id === botId
+                      ? {
+                          ...msg,
+                          text: `Web search failed: ${reason}\n\nCheck your Serper API key and try again.`,
+                        }
+                      : msg
+                  ),
+                  updatedAt: Date.now(),
+                };
+              });
+
+              return {
+                chats: sortChats(chats),
+                loading: false,
+                streaming: false,
+                webSearchStatus: "failed",
+              };
+            });
+
+            persistChats(get().chats, get().activeChatId);
+            return;
+          }
+        } else if (hasGenerationContext && historyForModel.length > 0) {
+          const lastIndex = historyForModel.length - 1;
+          const lastMessage = historyForModel[lastIndex];
+          if (lastMessage.role === "user") {
+            historyForGeneration = [
+              ...historyForModel.slice(0, lastIndex),
+              { role: "user", text: generationUserText },
+            ];
+          }
+        }
+
         let pendingChunk = "";
         let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -316,14 +473,14 @@ export const useChatStore = create<ChatStore>((set, get) => {
           }, streamFlushIntervalMs);
         };
 
-        await generateStream(historyForModel, selectedModelId, (token) => {
+        await generateStream(historyForGeneration, selectedModelId, (token) => {
           pendingChunk += token;
           scheduleFlush();
         });
 
         if (flushTimer) clearTimeout(flushTimer);
         flushPendingChunk();
-        set({ streaming: false, loading: false });
+        set({ streaming: false, loading: false, webSearchStatus: "idle" });
         persistChats(get().chats, get().activeChatId);
       } catch {
         set((state) => {
@@ -345,6 +502,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
             chats: sortChats(chats),
             loading: false,
             streaming: false,
+            webSearchStatus: "idle",
           };
         });
 
@@ -432,7 +590,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
 
         if (flushTimer) clearTimeout(flushTimer);
         flushPendingChunk();
-        set({ streaming: false, loading: false });
+        set({ streaming: false, loading: false, webSearchStatus: "idle" });
         persistChats(get().chats, get().activeChatId);
       } catch {
         set((state) => {
@@ -454,6 +612,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
             chats: sortChats(chats),
             loading: false,
             streaming: false,
+            webSearchStatus: "idle",
           };
         });
 
@@ -492,6 +651,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
             id: userMessageId,
             role: "user",
             text: content,
+            attachments: chat.messages[userIndex].attachments,
           };
 
           const nextMessages: Message[] = [
@@ -556,7 +716,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
 
         if (flushTimer) clearTimeout(flushTimer);
         flushPendingChunk();
-        set({ streaming: false, loading: false });
+        set({ streaming: false, loading: false, webSearchStatus: "idle" });
         persistChats(get().chats, get().activeChatId);
       } catch {
         set((state) => {
@@ -578,6 +738,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
             chats: sortChats(chats),
             loading: false,
             streaming: false,
+            webSearchStatus: "idle",
           };
         });
 
@@ -587,10 +748,10 @@ export const useChatStore = create<ChatStore>((set, get) => {
 
     stopStreaming: () => {
       stopGeneration();
-      set({ streaming: false, loading: false });
+      set({ streaming: false, loading: false, webSearchStatus: "idle" });
       persistChats(get().chats, get().activeChatId);
     },
   };
 });
 
-export type { ChatSession, Message };
+export type { ChatSession, Message, MessageSource, MessageAttachment };

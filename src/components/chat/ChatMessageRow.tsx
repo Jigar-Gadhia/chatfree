@@ -1,5 +1,9 @@
 import { AppColorsType } from "@/constants/theme";
-import { Message } from "@/src/store/chatStore";
+import {
+  Message,
+  MessageAttachment,
+  MessageSource,
+} from "@/src/store/chatStore";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
 import React, { useMemo } from "react";
@@ -153,6 +157,9 @@ type ChatMessageRowProps = {
   onShare: (text: string) => void;
   onRegenerate: (messageId: string) => void;
   onEdit: (messageId: string, text: string) => void;
+  onSpeak: (messageId: string, text: string) => void;
+  speakingMessageId: string | null;
+  onOpenSources: (sources: MessageSource[]) => void;
 };
 
 export const ChatMessageRow = React.memo(
@@ -171,6 +178,9 @@ export const ChatMessageRow = React.memo(
     onShare,
     onRegenerate,
     onEdit,
+    onSpeak,
+    speakingMessageId,
+    onOpenSources,
   }: ChatMessageRowProps) => {
     const isUser = item.role === "user";
     const isLastAssistant = !isUser && index === messages.length - 1 && streaming;
@@ -188,9 +198,30 @@ export const ChatMessageRow = React.memo(
     const shouldShowUserActions = !isUserTurnPending;
 
     if (isUser) {
+      const attachments: MessageAttachment[] = item.attachments ?? [];
+
       return (
         <View style={styles.userRow}>
           <View style={styles.userBubble}>
+            {attachments.length > 0 ? (
+              <View style={styles.userAttachmentRow}>
+                {attachments.map((attachment, attachmentIndex) => (
+                  <View
+                    key={`${item.id}-attachment-${attachmentIndex}`}
+                    style={styles.userAttachmentChip}
+                  >
+                    <Ionicons
+                      name="document-text-outline"
+                      size={12}
+                      color={appColors.icon.secondary}
+                    />
+                    <Text style={styles.userAttachmentText} numberOfLines={1}>
+                      {attachment.name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
             <MessageContent
               styles={styles}
               appColors={appColors}
@@ -272,6 +303,42 @@ export const ChatMessageRow = React.memo(
                 <Text style={styles.messageActionText}>Share</Text>
               </TouchableOpacity>
 
+              <TouchableOpacity
+                style={styles.messageAction}
+                onPress={() => onSpeak(item.id, item.text)}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={
+                    speakingMessageId === item.id
+                      ? "stop-circle-outline"
+                      : "volume-high-outline"
+                  }
+                  size={13}
+                  color={appColors.icon.muted}
+                />
+                <Text style={styles.messageActionText}>
+                  {speakingMessageId === item.id ? "Stop" : "Speak"}
+                </Text>
+              </TouchableOpacity>
+
+              {Array.isArray(item.sources) && item.sources.length > 0 ? (
+                <TouchableOpacity
+                  style={styles.messageAction}
+                  onPress={() => onOpenSources(item.sources ?? [])}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name="globe-outline"
+                    size={13}
+                    color={appColors.icon.muted}
+                  />
+                  <Text style={styles.messageActionText}>
+                    Sources ({item.sources.length})
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
               {item.id === latestAssistantMessageId ? (
                 <TouchableOpacity
                   style={[
@@ -307,7 +374,8 @@ export const ChatMessageRow = React.memo(
     prev.streaming === next.streaming &&
     prev.latestAssistantMessageId === next.latestAssistantMessageId &&
     prev.selectedModelId === next.selectedModelId &&
-    prev.isModelLoading === next.isModelLoading
+    prev.isModelLoading === next.isModelLoading &&
+    prev.speakingMessageId === next.speakingMessageId
 );
 
 ChatMessageRow.displayName = "ChatMessageRow";

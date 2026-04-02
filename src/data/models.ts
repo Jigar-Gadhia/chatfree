@@ -4,48 +4,40 @@ import { Model } from "../types/model";
 
 export const MODELS: Model[] = [
   {
-    id: "qwen1_5-1_8b-chat-q4_k_m",
-    name: "Qwen 1.8B",
-    sizeMB: 1200,
-    url: "https://huggingface.co/Qwen/Qwen1.5-1.8B-Chat-GGUF/resolve/main/qwen1_5-1_8b-chat-q4_k_m.gguf",
+    id: "qwen2_5-1_5b-instruct-q4_k_m",
+    name: "Qwen2.5 1.5B Instruct",
+    sizeMB: 1700,
+    url: "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
     format: "qwen",
-    nPredict: 512,
-    recommendation: "Best for speed",
-    features: ["Fast replies", "Low memory usage", "Great for daily chat"],
+    nPredict: 128,
+    recommendation: "Web query rewrite model",
+    features: ["Query rewriting", "Fast inference", "Search intent cleanup"],
     stop: ["<|im_end|>", "<|im_start|>"],
     systemPrompt: `
-  You are a helpful AI assistant.
-
-  STRICT RULES:
-  - Follow instructions exactly
-  - Keep answers short and precise
-  - Do not add extra explanation unless asked
-  - If user asks for one word, respond with ONLY one word
-  - If unsure, say "I don't know"
-  - Do not hallucinate facts
-  `,
-  },
-  {
-    id: "deepseek-r1-distill-qwen-1_5b-q4_k_m",
-    name: "DeepSeek R1 1.5B",
-    sizeMB: 1200,
-    url: "https://huggingface.co/unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf",
-    format: "qwen",
-    nPredict: 512,
-    recommendation: "Best for reasoning",
-    features: [
-      "Better reasoning",
-      "Step-by-step answers",
-      "Useful for coding/math",
-    ],
-    stop: ["<|im_end|>", "<|im_start|>"],
-    systemPrompt: `
-You are a reasoning assistant.
+You are a helpful and casual assistant.
 
 RULES:
-- Think step by step
-- Show reasoning clearly
-- Keep answers structured
+- Answer naturally and clearly
+- Keep responses concise unless user asks for detail
+- Do not rewrite user prompts unless explicitly asked
+`,
+  },
+  {
+    id: "qwen3-reranker-0_6b-q4_k_m",
+    name: "Qwen3 Reranker 0.6B",
+    sizeMB: 396,
+    url: "https://huggingface.co/johnniang/Qwen3-Reranker-0.6B-Q4_K_M-GGUF/resolve/main/qwen3-reranker-0.6b-q4_k_m.gguf",
+    format: "qwen",
+    nPredict: 128,
+    recommendation: "Web result reranker",
+    features: ["Result ranking", "Relevance ordering", "Lightweight rerank"],
+    stop: ["<|im_end|>", "<|im_start|>"],
+    systemPrompt: `
+You rerank search candidates by relevance.
+
+RULES:
+- Follow ranking instructions exactly
+- Return only the requested ranking format
 `,
   },
 ];
