@@ -35,4 +35,5 @@ export type ModelStore = {
   selectModel: (modelId: string) => void;
   isModelLoading: boolean;
   setIsModelLoading: (loading: boolean) => void;
+  loadSelectedModel: () => Promise<void>;
 };

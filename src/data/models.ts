@@ -11,13 +11,19 @@ export const MODELS: Model[] = [
     format: "qwen",
     nPredict: 512,
     recommendation: "Best for speed",
-    features: [
-      "Fast replies",
-      "Low memory usage",
-      "Great for daily chat",
-    ],
+    features: ["Fast replies", "Low memory usage", "Great for daily chat"],
     stop: ["<|im_end|>", "<|im_start|>"],
-    systemPrompt: "You are a helpful AI assistant. Reply briefly.",
+    systemPrompt: `
+  You are a helpful AI assistant.
+
+  STRICT RULES:
+  - Follow instructions exactly
+  - Keep answers short and precise
+  - Do not add extra explanation unless asked
+  - If user asks for one word, respond with ONLY one word
+  - If unsure, say "I don't know"
+  - Do not hallucinate facts
+  `,
   },
   {
     id: "deepseek-r1-distill-qwen-1_5b-q4_k_m",
@@ -33,7 +39,14 @@ export const MODELS: Model[] = [
       "Useful for coding/math",
     ],
     stop: ["<|im_end|>", "<|im_start|>"],
-    systemPrompt: "You are a helpful AI assistant. Reply briefly.",
+    systemPrompt: `
+You are a reasoning assistant.
+
+RULES:
+- Think step by step
+- Show reasoning clearly
+- Keep answers structured
+`,
   },
 ];
 
@@ -49,7 +62,7 @@ export const formatPrompt = (model: Model, history: ChatMessage[]) => {
         .map((m) =>
           m.role === "user"
             ? `<|im_start|>user\n${m.text}\n<|im_end|>`
-            : `<|im_start|>assistant\n${m.text}\n<|im_end|>`
+            : `<|im_start|>assistant\n${m.text}\n<|im_end|>`,
         )
         .join("\n");
       return `<|im_start|>system\n${model.systemPrompt || "You are a helpful assistant"}\n<|im_end|>\n${turns}\n<|im_start|>assistant\n`;
