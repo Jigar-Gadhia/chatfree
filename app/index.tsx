@@ -23,6 +23,10 @@ import * as FileSystem from "expo-file-system/legacy";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from "expo-speech-recognition";
 import * as Speech from "expo-speech";
 import * as WebBrowser from "expo-web-browser";
 import React, {
@@ -94,9 +98,12 @@ type PdfAttachment = {
   chunks: string[];
 };
 
+const MIC_AUTO_STOP_MS = 2800;
+
 export default function ChatScreen() {
   const [input, setInput] = useState("");
   const [useWebSearch, setUseWebSearch] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(
     null,
   );
@@ -116,6 +123,10 @@ export default function ChatScreen() {
   const shouldAutoScrollRef = useRef(true);
   const followStreamingRef = useRef(true);
   const lastAutoScrollAtRef = useRef(0);
+  const micBaseInputRef = useRef("");
+  const micSilenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const {
     chats,
@@ -223,9 +234,59 @@ export default function ChatScreen() {
 
   useEffect(() => {
     return () => {
+      if (micSilenceTimeoutRef.current) {
+        clearTimeout(micSilenceTimeoutRef.current);
+        micSilenceTimeoutRef.current = null;
+      }
       Speech.stop();
+      ExpoSpeechRecognitionModule.stop();
     };
   }, []);
+
+  const clearMicSilenceTimeout = useCallback(() => {
+    if (!micSilenceTimeoutRef.current) return;
+    clearTimeout(micSilenceTimeoutRef.current);
+    micSilenceTimeoutRef.current = null;
+  }, []);
+
+  const scheduleMicSilenceTimeout = useCallback(() => {
+    clearMicSilenceTimeout();
+    micSilenceTimeoutRef.current = setTimeout(() => {
+      ExpoSpeechRecognitionModule.stop();
+      setIsRecording(false);
+      micBaseInputRef.current = "";
+      micSilenceTimeoutRef.current = null;
+    }, MIC_AUTO_STOP_MS);
+  }, [clearMicSilenceTimeout]);
+
+  useSpeechRecognitionEvent("start", () => {
+    setIsRecording(true);
+    scheduleMicSilenceTimeout();
+  });
+
+  useSpeechRecognitionEvent("end", () => {
+    clearMicSilenceTimeout();
+    setIsRecording(false);
+    micBaseInputRef.current = "";
+  });
+
+  useSpeechRecognitionEvent("result", (event) => {
+    const results = event.results ?? [];
+    const latestResult = results[results.length - 1];
+    const transcript = latestResult?.transcript?.trim();
+    if (!transcript) return;
+    scheduleMicSilenceTimeout();
+
+    const base = micBaseInputRef.current.trim();
+    const nextInput = base ? `${base} ${transcript}` : transcript;
+    setInput((current) => (current === nextInput ? current : nextInput));
+  });
+
+  useSpeechRecognitionEvent("error", () => {
+    clearMicSilenceTimeout();
+    setIsRecording(false);
+    micBaseInputRef.current = "";
+  });
 
   const handleSend = async () => {
     if (!selectedModelId) {
@@ -235,6 +296,13 @@ export default function ChatScreen() {
 
     const text = input.trim();
     if (!text || isModelLoading || streaming) return;
+
+    if (isRecording) {
+      clearMicSilenceTimeout();
+      ExpoSpeechRecognitionModule.stop();
+      setIsRecording(false);
+      micBaseInputRef.current = "";
+    }
 
     setInput("");
     const editingId = editingUserMessageId;
@@ -266,6 +334,30 @@ export default function ChatScreen() {
     await sendMessage(text, { useWebSearch, documentContext, userAttachments });
     setUseWebSearch(false);
   };
+
+  const handleToggleMic = useCallback(async () => {
+    if (streaming || isModelLoading) return;
+
+    if (isRecording) {
+      clearMicSilenceTimeout();
+      ExpoSpeechRecognitionModule.stop();
+      setIsRecording(false);
+      micBaseInputRef.current = "";
+      return;
+    }
+
+    const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!permission.granted) return;
+    if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) return;
+
+    micBaseInputRef.current = input.trim();
+    ExpoSpeechRecognitionModule.start({
+      lang: "en-US",
+      interimResults: true,
+      continuous: true,
+      addsPunctuation: true,
+    });
+  }, [clearMicSilenceTimeout, input, isModelLoading, isRecording, streaming]);
 
   const handleCreateNewChat = () => {
     createNewChat();
@@ -689,14 +781,18 @@ export default function ChatScreen() {
                   value={input}
                   onChangeText={setInput}
                   placeholder={
-                    editingUserMessageId ? "Edit your message" : "Message Chat"
+                    isRecording
+                      ? "Listening..."
+                      : editingUserMessageId
+                        ? "Edit your message"
+                        : "Message Chat"
                   }
                   placeholderTextColor={appColors.text.weak}
                   multiline
                   maxLength={6000}
                   textAlignVertical="top"
                   inputStyle={styles.input}
-                  editable={!isModelLoading && !streaming}
+                  editable={!isModelLoading && !streaming && !isRecording}
                 />
               </View>
 
@@ -735,6 +831,27 @@ export default function ChatScreen() {
                   size={16}
                   color={
                     useWebSearch
+                      ? appColors.icon.inverse
+                      : appColors.icon.secondary
+                  }
+                />
+              </AppButton>
+
+              <AppButton
+                onPress={handleToggleMic}
+                style={[styles.micButton, isRecording && styles.micButtonActive]}
+                activeOpacity={0.85}
+                disabled={isModelLoading || streaming}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  isRecording ? "Stop voice input" : "Start voice input"
+                }
+              >
+                <Ionicons
+                  name={isRecording ? "stop" : "mic-outline"}
+                  size={16}
+                  color={
+                    isRecording
                       ? appColors.icon.inverse
                       : appColors.icon.secondary
                   }

@@ -365,6 +365,18 @@ export const createIndexStyles = (appColors: AppColorsType) =>
     webSearchButtonActive: {
       backgroundColor: appColors.bg.success,
     },
+    micButton: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: "center",
+      justifyContent: "center",
+      marginLeft: 8,
+      backgroundColor: appColors.bg.actionSecondary,
+    },
+    micButtonActive: {
+      backgroundColor: appColors.bg.stop,
+    },
     sendButton: {
       width: 34,
       height: 34,
