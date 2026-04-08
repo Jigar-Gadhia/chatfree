@@ -27,7 +27,7 @@ export const stopGeneration = () => {
 export const generateStream = async (
   history: { role: "user" | "assistant"; text: string }[],
   modelId: string,
-  onToken: (token: string) => void
+  onToken: (token: string) => void,
 ): Promise<void> => {
   if (!llamaContext) {
     throw new Error("Model not loaded");
@@ -42,13 +42,13 @@ export const generateStream = async (
     {
       prompt: formattedPrompt,
       n_predict: model.nPredict,
-      temperature: 0.7,
+      temperature: 0.4,
       stop: model.stop || [],
     },
     (data: { token: string }) => {
       if (data.token) {
         onToken(data.token);
       }
-    }
+    },
   );
 };
