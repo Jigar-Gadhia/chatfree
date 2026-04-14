@@ -153,10 +153,17 @@ import { Model, ModelStore } from "../types/model";
 const STORAGE_KEY = "downloads";
 const SELECTED_MODEL_KEY = "selected_model";
 
+const logError = (tag: string, e: unknown) => {
+  const msg = e instanceof Error ? `${e.message}\n${e.stack}` : String(e);
+  console.error(`[modelStore/${tag}]`, msg);
+  return msg;
+};
+
 export const useModelStore = create<ModelStore>((set, get) => ({
   downloads: {},
   selectedModelId: null,
   isModelLoading: false,
+  lastError: null,
 
   loadSelectedModel: async () => {
     const { selectedModelId, downloads } = get();
@@ -176,14 +183,14 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     }
 
     try {
-      set({ isModelLoading: true });
+      set({ isModelLoading: true, lastError: null });
 
       await loadModel(model.uri); // 🔥 IMPORTANT
 
       set({ isModelLoading: false });
     } catch (e) {
-      console.log("Model load error", e);
-      set({ isModelLoading: false });
+      const msg = logError("loadSelectedModel", e);
+      set({ isModelLoading: false, lastError: msg });
     }
   },
 
@@ -217,7 +224,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         set({ downloads: JSON.parse(data) });
       }
     } catch (e) {
-      console.log("Load error", e);
+      logError("loadPersisted", e);
     }
   },
 
@@ -226,7 +233,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     try {
       await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(downloads));
     } catch (e) {
-      console.log("Persist error", e);
+      logError("persist", e);
     }
   },
 
@@ -280,10 +287,20 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         },
       };
 
-      set({ downloads: updated });
+      set({ downloads: updated, lastError: null });
       await get().persist(updated);
     } catch (e) {
-      console.log("Download error", e);
+      const msg = logError("downloadModel", e);
+      set((state) => ({
+        downloads: {
+          ...state.downloads,
+          [model.id]: {
+            ...state.downloads[model.id],
+            status: "failed" as const,
+          },
+        },
+        lastError: msg,
+      }));
     }
   },
 
@@ -333,7 +350,7 @@ export const useModelStore = create<ModelStore>((set, get) => ({
         await SecureStore.deleteItemAsync(SELECTED_MODEL_KEY);
       }
     } catch (e) {
-      console.log("Delete error", e);
+      logError("removeModel", e);
     }
   },
 

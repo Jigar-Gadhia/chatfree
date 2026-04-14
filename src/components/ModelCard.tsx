@@ -42,6 +42,7 @@ export default function ModelCard({ model }: Props) {
   const state = downloads[model.id];
   const isDownloading = state?.status === "downloading";
   const isDownloaded = state?.status === "completed";
+  const isFailed = state?.status === "failed";
   const isActive = selectedModelId === model.id;
   const isBusy = isModelLoading;
   const showUseLoading = isBusy && loadingThisModel;
@@ -151,15 +152,31 @@ export default function ModelCard({ model }: Props) {
         </View>
       </View>
 
-      {!state ? (
-        <TouchableOpacity
-          onPress={() => downloadModel(model)}
-          style={styles.primaryButton}
-          activeOpacity={0.88}
-        >
-          <Ionicons name="download-outline" size={16} color={appColors.text.inverse} />
-          <Text style={styles.primaryButtonText}>Download</Text>
-        </TouchableOpacity>
+      {!state || isFailed ? (
+        <>
+          {isFailed ? (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle-outline" size={13} color={appColors.icon.danger} />
+              <Text style={styles.errorBannerText}>
+                Download failed — check your connection and try again.
+              </Text>
+            </View>
+          ) : null}
+          <TouchableOpacity
+            onPress={() => downloadModel(model)}
+            style={styles.primaryButton}
+            activeOpacity={0.88}
+          >
+            <Ionicons
+              name={isFailed ? "refresh-outline" : "download-outline"}
+              size={16}
+              color={appColors.text.inverse}
+            />
+            <Text style={styles.primaryButtonText}>
+              {isFailed ? "Retry Download" : "Download"}
+            </Text>
+          </TouchableOpacity>
+        </>
       ) : null}
 
       {isDownloaded ? (
@@ -452,5 +469,24 @@ const createStyles = (appColors: AppColorsType) =>
       color: appColors.danger.text,
       fontSize: 12,
       fontWeight: "700",
+    },
+    errorBanner: {
+      marginTop: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 10,
+      backgroundColor: appColors.bg.dangerSoft,
+      borderWidth: 1,
+      borderColor: appColors.border.dangerSoft,
+    },
+    errorBannerText: {
+      flex: 1,
+      color: appColors.danger.text,
+      fontSize: 12,
+      fontWeight: "500",
+      lineHeight: 16,
     },
   });

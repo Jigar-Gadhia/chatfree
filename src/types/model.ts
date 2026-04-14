@@ -13,7 +13,7 @@ export type Model = {
   systemPrompt?: string;
 };
 
-export type DownloadStatus = "idle" | "downloading" | "completed" | "cancelled";
+export type DownloadStatus = "idle" | "downloading" | "completed" | "cancelled" | "failed";
 
 export type DownloadState = {
   progress: number;
@@ -24,6 +24,7 @@ export type DownloadState = {
 
 export type ModelStore = {
   downloads: Record<string, DownloadState>;
+  lastError: string | null;
 
   init: () => Promise<void>;
   downloadModel: (model: Model) => Promise<void>;

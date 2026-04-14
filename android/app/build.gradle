@@ -130,6 +130,16 @@ android {
             def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'
             useLegacyPackaging enableLegacyPackaging.toBoolean()
         }
+        // llama.rn native libraries — must NOT be stripped in release builds.
+        // R8 cannot trace JNI call sites so it would otherwise eliminate these.
+        doNotStrip "*/arm64-v8a/librnllama.so"
+        doNotStrip "*/arm64-v8a/librnllama-jni.so"
+        doNotStrip "*/armeabi-v7a/librnllama.so"
+        doNotStrip "*/armeabi-v7a/librnllama-jni.so"
+        doNotStrip "*/x86/librnllama.so"
+        doNotStrip "*/x86/librnllama-jni.so"
+        doNotStrip "*/x86_64/librnllama.so"
+        doNotStrip "*/x86_64/librnllama-jni.so"
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
