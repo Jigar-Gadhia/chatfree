@@ -12,3 +12,9 @@
 -keep class com.facebook.react.turbomodule.** { *; }
 
 # Add any project specific keep options here:
+# Ignore missing JP2Decoder (PDFBox JPX)
+-dontwarn com.gemalto.jp2.**
+
+# Keep PDFBox classes
+-keep class com.tom_roush.pdfbox.** { *; }
+-dontwarn com.tom_roush.pdfbox.**

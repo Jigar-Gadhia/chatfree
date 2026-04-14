@@ -42,7 +42,7 @@ export const generateStream = async (
     {
       prompt: formattedPrompt,
       n_predict: model.nPredict,
-      temperature: 0.4,
+      temperature: 0.65,
       stop: model.stop || [],
     },
     (data: { token: string }) => {

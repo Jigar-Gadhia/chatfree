@@ -6,6 +6,7 @@ import {
 } from "@/src/store/chatStore";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
+import { Image } from "expo-image";
 import React, { useMemo } from "react";
 import {
   ScrollView,
@@ -26,6 +27,77 @@ type MessageContentProps = {
   text: string;
   textStyle: StyleProp<TextStyle>;
   showStreamingCursor?: boolean;
+};
+
+const getSourceFaviconUrl = (rawUrl: string) => {
+  try {
+    const hostname = new URL(rawUrl).hostname;
+    if (!hostname) return null;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`;
+  } catch {
+    return null;
+  }
+};
+
+const SourceActionFavicon = ({
+  sourceUrl,
+  styles,
+  appColors,
+}: {
+  sourceUrl: string;
+  styles: any;
+  appColors: AppColorsType;
+}) => {
+  const faviconUrl = getSourceFaviconUrl(sourceUrl);
+
+  if (!faviconUrl) {
+    return (
+      <Ionicons name="globe-outline" size={12} color={appColors.icon.muted} />
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri: faviconUrl }}
+      style={styles.messageSourceFavicon}
+      contentFit="cover"
+    />
+  );
+};
+
+const SourceActionStack = ({
+  sources,
+  styles,
+  appColors,
+}: {
+  sources: MessageSource[];
+  styles: any;
+  appColors: AppColorsType;
+}) => {
+  const previewSources = sources.slice(0, 3);
+
+  return (
+    <View style={styles.messageSourceStack}>
+      {previewSources.map((source, index) => (
+        <View
+          key={`${source.url}-${index}`}
+          style={[
+            styles.messageSourceStackItem,
+            {
+              marginLeft: index === 0 ? 0 : -6,
+              zIndex: previewSources.length - index,
+            },
+          ]}
+        >
+          <SourceActionFavicon
+            sourceUrl={source.url}
+            styles={styles}
+            appColors={appColors}
+          />
+        </View>
+      ))}
+    </View>
+  );
 };
 
 const parseMessageParts = (message: string): MessagePart[] => {
@@ -131,7 +203,9 @@ const MessageContent = ({
         return (
           <Text key={`text-${index}`} style={textStyle}>
             {part.content}
-            {shouldShowCursorOnPart ? <Text style={styles.cursor}> ▍</Text> : null}
+            {shouldShowCursorOnPart ? (
+              <Text style={styles.cursor}> ▍</Text>
+            ) : null}
           </Text>
         );
       })}
@@ -147,7 +221,8 @@ type ChatMessageRowProps = {
   appColors: AppColorsType;
   item: Message;
   index: number;
-  messages: Message[];
+  messageCount: number;
+  nextMessage?: Message;
   loading: boolean;
   streaming: boolean;
   latestAssistantMessageId: string | null;
@@ -168,7 +243,8 @@ export const ChatMessageRow = React.memo(
     appColors,
     item,
     index,
-    messages,
+    messageCount,
+    nextMessage,
     loading,
     streaming,
     latestAssistantMessageId,
@@ -183,8 +259,7 @@ export const ChatMessageRow = React.memo(
     onOpenSources,
   }: ChatMessageRowProps) => {
     const isUser = item.role === "user";
-    const isLastAssistant = !isUser && index === messages.length - 1 && streaming;
-    const nextMessage = messages[index + 1];
+    const isLastAssistant = !isUser && index === messageCount - 1 && streaming;
     const isCurrentAssistantPending =
       item.id === latestAssistantMessageId &&
       (streaming || loading || item.text.trim().length === 0);
@@ -322,23 +397,6 @@ export const ChatMessageRow = React.memo(
                 </Text>
               </TouchableOpacity>
 
-              {Array.isArray(item.sources) && item.sources.length > 0 ? (
-                <TouchableOpacity
-                  style={styles.messageAction}
-                  onPress={() => onOpenSources(item.sources ?? [])}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name="globe-outline"
-                    size={13}
-                    color={appColors.icon.muted}
-                  />
-                  <Text style={styles.messageActionText}>
-                    Sources ({item.sources.length})
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-
               {item.id === latestAssistantMessageId ? (
                 <TouchableOpacity
                   style={[
@@ -358,6 +416,23 @@ export const ChatMessageRow = React.memo(
                   <Text style={styles.messageActionText}>Regenerate</Text>
                 </TouchableOpacity>
               ) : null}
+
+              {Array.isArray(item.sources) && item.sources.length > 0 ? (
+                <TouchableOpacity
+                  style={styles.messageAction}
+                  onPress={() => onOpenSources(item.sources ?? [])}
+                  activeOpacity={0.8}
+                >
+                  <SourceActionStack
+                    sources={item.sources}
+                    styles={styles}
+                    appColors={appColors}
+                  />
+                  <Text style={styles.messageActionText}>
+                    ({item.sources.length})
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           ) : null}
         </View>
@@ -369,13 +444,14 @@ export const ChatMessageRow = React.memo(
     prev.appColors === next.appColors &&
     prev.item === next.item &&
     prev.index === next.index &&
-    prev.messages.length === next.messages.length &&
+    prev.messageCount === next.messageCount &&
+    prev.nextMessage === next.nextMessage &&
     prev.loading === next.loading &&
     prev.streaming === next.streaming &&
     prev.latestAssistantMessageId === next.latestAssistantMessageId &&
     prev.selectedModelId === next.selectedModelId &&
     prev.isModelLoading === next.isModelLoading &&
-    prev.speakingMessageId === next.speakingMessageId
+    prev.speakingMessageId === next.speakingMessageId,
 );
 
 ChatMessageRow.displayName = "ChatMessageRow";

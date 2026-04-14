@@ -141,7 +141,7 @@ const loadPersistedChatState = async (): Promise<{
 
 export const useChatStore = create<ChatStore>((set, get) => {
   const initialChat = makeChat();
-  const streamFlushIntervalMs = 8;
+  const streamFlushIntervalMs = 32;
 
   const appendAssistantChunk = (
     chatId: string,
@@ -361,7 +361,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
           chats: sortChats(chats),
           loading: true,
           streaming: false,
-          webSearchStatus: useWebSearch ? "rewriting" : "idle",
+          webSearchStatus: useWebSearch ? "searching" : "idle",
         };
       });
 
@@ -425,7 +425,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
                     msg.id === botId
                       ? {
                           ...msg,
-                          text: `Web search failed: ${reason}\n\nCheck your Serper API key and try again.`,
+                          text: `Web search failed: ${reason}\n\nPlease try again in a moment.`,
                         }
                       : msg
                   ),

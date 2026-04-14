@@ -6,7 +6,7 @@ A privacy-focused, offline-capable chat application built with React Native and 
 
 - **Local LLM Integration**: Runs AI models directly on your device using [llama.rn](https://github.com/mbzuai-oryx/llama.rn)
 - **Offline Capability**: Chat without internet connection once models are downloaded
-- **Web Search**: Enhanced responses with real-time web search integration (requires API key)
+- **Web Search**: Enhanced responses with real-time Wikipedia search integration (powered by REST API v1)
 - **PDF Processing**: Upload and chat with PDF documents using local text extraction
 - **Voice Input/Output**: Speech-to-text for input and text-to-speech for responses
 - **Multiple Models**: Support for various quantized LLMs optimized for mobile devices
@@ -20,7 +20,7 @@ A privacy-focused, offline-capable chat application built with React Native and 
 - **State Management**: Zustand
 - **AI Engine**: llama.rn for on-device LLM execution
 - **UI Components**: React Native elements with custom styling
-- **Web Search**: Serper API integration with query rewriting and result reranking
+- **Web Search**: Wikipedia REST API v1 integration with custom User-Agent identification
 - **PDF Processing**: Expo PDF text extraction
 - **Speech**: Expo Speech Recognition & Text-to-Speech
 
@@ -50,12 +50,8 @@ A privacy-focused, offline-capable chat application built with React Native and 
    yarn install
    ```
 
-3. Configure environment variables (for web search):
-
-   ```bash
-   cp .env.example .env
-   # Add your Serper API key to EXPO_PUBLIC_SERPER_API_KEY
-   ```
+3. Web Search Identification:
+   Wikipedia's API requires a descriptive User-Agent. This is pre-configured in `src/ai/webSearch.ts`.
 
 4. Start the development server:
    ```bash
@@ -89,17 +85,17 @@ All models are downloaded locally and run on-device for maximum privacy.
 
 ## 🔍 Web Search Feature
 
-To enable web search functionality:
+ChatFree utilizes Wikipedia's modern REST API to provide grounded, factual information for your queries. This implementation prioritizes privacy and open data access.
 
-1. Sign up for a [Serper API key](https://serper.dev/)
-2. Add the key to your `.env` file as `EXPO_PUBLIC_SERPER_API_KEY`
-3. Toggle the globe icon in the chat interface to enable web search for specific queries
+1. **Wikipedia Integration**: Powered by the MediaWiki REST API v1 (`/w/rest.php/v1/search/page`).
+2. **Privacy First**: No external search engine API keys are required. All information is retrieved from Wikipedia's public repositories.
+3. **API Etiquette**: The application identifies itself via a custom User-Agent to ensure responsible API usage.
 
 The web search pipeline includes:
 
-- Query rewriting for better search results
-- Result retrieval and deduplication
-- Local reranking using a dedicated model
+- **Query Simplification**: Optimizes user queries for better Wikipedia search matching.
+- **Content Pre-processing**: Clean extraction and HTML stripping for LLM compatibility.
+- **Token-based Reranking**: Results are scored and sorted based on their relevance to the original query.
 
 ## 📄 PDF Chat
 
@@ -139,5 +135,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [llama.rn](https://github.com/mbzuai-oryx/llama.rn) for enabling on-device LLM execution
 - [Expo](https://expo.dev) for the cross-platform framework
 - [Hugging Face](https://huggingface.co) for hosting the quantized models
-- [Serper](https://serper.dev) for the Google search API
+- [Wikipedia REST API](https://www.mediawiki.org/wiki/API:REST_API) for grounded factual data
 - Built using the **Codex AI Coding Agent** for rapid development and implementation

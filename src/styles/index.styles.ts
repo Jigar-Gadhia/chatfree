@@ -256,6 +256,26 @@ export const createIndexStyles = (appColors: AppColorsType) =>
       fontSize: 12,
       fontWeight: "500",
     },
+    messageSourceStack: {
+      flexDirection: "row",
+      alignItems: "center",
+      minWidth: 16,
+    },
+    messageSourceStackItem: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: appColors.bg.surface,
+      borderWidth: 1,
+      borderColor: appColors.border.subtle,
+    },
+    messageSourceFavicon: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
     thinkingBar: {
       flexDirection: "row",
       alignItems: "center",
@@ -277,21 +297,29 @@ export const createIndexStyles = (appColors: AppColorsType) =>
       backgroundColor: appColors.bg.screen,
     },
     composerInner: {
-      flexDirection: "row",
-      alignItems: "flex-end",
+      gap: 10,
       borderRadius: 22,
       backgroundColor: appColors.bg.input,
       borderWidth: 1,
       borderColor: appColors.border.input,
-      paddingLeft: 12,
-      paddingRight: 8,
-      paddingVertical: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    composerTopRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+    },
+    composerActionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
     },
     composerInputWrap: {
       flex: 1,
       minHeight: 24,
       maxHeight: 180,
       justifyContent: "center",
+      paddingRight: 10,
     },
     attachButton: {
       width: 34,
@@ -299,7 +327,6 @@ export const createIndexStyles = (appColors: AppColorsType) =>
       borderRadius: 17,
       alignItems: "center",
       justifyContent: "center",
-      marginLeft: 8,
       backgroundColor: appColors.bg.actionSecondary,
     },
     chooseModelButton: {
@@ -359,7 +386,6 @@ export const createIndexStyles = (appColors: AppColorsType) =>
       borderRadius: 17,
       alignItems: "center",
       justifyContent: "center",
-      marginLeft: 8,
       backgroundColor: appColors.bg.actionSecondary,
     },
     webSearchButtonActive: {
@@ -371,7 +397,6 @@ export const createIndexStyles = (appColors: AppColorsType) =>
       borderRadius: 17,
       alignItems: "center",
       justifyContent: "center",
-      marginLeft: 8,
       backgroundColor: appColors.bg.actionSecondary,
     },
     micButtonActive: {
@@ -383,7 +408,7 @@ export const createIndexStyles = (appColors: AppColorsType) =>
       borderRadius: 17,
       alignItems: "center",
       justifyContent: "center",
-      marginLeft: 8,
+      flexShrink: 0,
     },
     sendButtonEnabled: {
       backgroundColor: appColors.bg.success,

@@ -5,7 +5,7 @@ export type Model = {
   name: string;
   sizeMB: number;
   url: string;
-  format: "plain" | "qwen" | "chatml";
+  format: "plain" | "qwen" | "chatml" | "qwen-think";
   nPredict: number;
   recommendation?: string;
   features?: string[];

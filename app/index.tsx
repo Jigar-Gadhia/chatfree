@@ -1,3 +1,4 @@
+import { extractPdfContextFromUri } from "@/src/ai/pdf";
 import AnimatedKeyboardView from "@/src/components/AnimatedKeyboardView";
 import { ChatDrawer } from "@/src/components/chat/ChatDrawer";
 import { ChatMessageRow } from "@/src/components/chat/ChatMessageRow";
@@ -5,7 +6,6 @@ import ScreenContainer from "@/src/components/ScreenContainer";
 import AppButton from "@/src/components/ui/AppButton";
 import AppText from "@/src/components/ui/AppText";
 import AppTextInput from "@/src/components/ui/AppTextInput";
-import { extractPdfContextFromUri } from "@/src/ai/pdf";
 import { useAppColors } from "@/src/hooks/useAppColors";
 import {
   Message,
@@ -16,18 +16,18 @@ import {
 import { useModelStore } from "@/src/store/modelStore";
 import { createIndexStyles } from "@/src/styles/index.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import * as DocumentPicker from "expo-document-picker";
 import * as Clipboard from "expo-clipboard";
-import { Image } from "expo-image";
+import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
+import * as Speech from "expo-speech";
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
-import * as Speech from "expo-speech";
 import * as WebBrowser from "expo-web-browser";
 import React, {
   useCallback,
@@ -172,7 +172,7 @@ export default function ChatScreen() {
   }, [latestAssistantMessageId, messages]);
 
   const canSend =
-    input.trim().length > 0 && !!selectedModelId && !isModelLoading;
+    input.trim().length > 0 && !!selectedModelId && !isModelLoading && !loading;
   const listBottomPadding = 18 + 78 + keyboardHeight;
 
   const scrollToBottom = (animated = true) => {
@@ -295,7 +295,7 @@ export default function ChatScreen() {
     }
 
     const text = input.trim();
-    if (!text || isModelLoading || streaming) return;
+    if (!text || isModelLoading || loading || streaming) return;
 
     if (isRecording) {
       clearMicSilenceTimeout();
@@ -336,7 +336,7 @@ export default function ChatScreen() {
   };
 
   const handleToggleMic = useCallback(async () => {
-    if (streaming || isModelLoading) return;
+    if (streaming || loading || isModelLoading) return;
 
     if (isRecording) {
       clearMicSilenceTimeout();
@@ -357,7 +357,7 @@ export default function ChatScreen() {
       continuous: true,
       addsPunctuation: true,
     });
-  }, [clearMicSilenceTimeout, input, isModelLoading, isRecording, streaming]);
+  }, [clearMicSilenceTimeout, input, isModelLoading, isRecording, loading, streaming]);
 
   const handleCreateNewChat = () => {
     createNewChat();
@@ -411,10 +411,10 @@ export default function ChatScreen() {
 
   const handleRegenerate = useCallback(
     async (messageId: string) => {
-      if (streaming || isModelLoading || !selectedModelId) return;
+      if (loading || streaming || isModelLoading || !selectedModelId) return;
       await regenerateAssistant(messageId);
     },
-    [isModelLoading, regenerateAssistant, selectedModelId, streaming],
+    [isModelLoading, loading, regenerateAssistant, selectedModelId, streaming],
   );
 
   const handleSpeakMessage = useCallback(
@@ -517,11 +517,11 @@ export default function ChatScreen() {
           current.map((attachment) =>
             attachment.id === attachmentId
               ? {
-                  ...attachment,
-                  status: extracted.chunks.length ? "ready" : "failed",
-                  error: extracted.chunks.length ? undefined : "No readable text found",
-                  chunks: extracted.chunks,
-                }
+                ...attachment,
+                status: extracted.chunks.length ? "ready" : "failed",
+                error: extracted.chunks.length ? undefined : "No readable text found",
+                chunks: extracted.chunks,
+              }
               : attachment,
           ),
         );
@@ -530,11 +530,11 @@ export default function ChatScreen() {
           current.map((attachment) =>
             attachment.id === attachmentId
               ? {
-                  ...attachment,
-                  status: "failed",
-                  error:
-                    error instanceof Error ? error.message : "Failed to parse PDF",
-                }
+                ...attachment,
+                status: "failed",
+                error:
+                  error instanceof Error ? error.message : "Failed to parse PDF",
+              }
               : attachment,
           ),
         );
@@ -549,7 +549,8 @@ export default function ChatScreen() {
         appColors={appColors}
         item={item}
         index={index}
-        messages={messages}
+        messageCount={messages.length}
+        nextMessage={messages[index + 1]}
         loading={loading}
         streaming={streaming}
         latestAssistantMessageId={latestAssistantMessageId}
@@ -714,12 +715,12 @@ export default function ChatScreen() {
               : webSearchStatus === "rewriting"
                 ? "Rewriting query..."
                 : webSearchStatus === "searching"
-                ? "Searching web..."
-                : webSearchStatus === "reranking"
-                  ? "Reranking results..."
-                : webSearchStatus === "processing"
-                  ? "Summarizing web results..."
-                  : "Thinking..."}
+                  ? "Searching web..."
+                  : webSearchStatus === "reranking"
+                    ? "Reranking results..."
+                    : webSearchStatus === "processing"
+                      ? "Summarizing web results..."
+                      : "Thinking..."}
           </AppText>
         </View>
       ) : null}
@@ -728,159 +729,163 @@ export default function ChatScreen() {
         <View style={styles.composerWrap}>
           {selectedModelId ? (
             <View style={styles.composerInner}>
-              <View style={styles.composerInputWrap}>
-                {pdfAttachments.length > 0 ? (
-                  <View style={styles.pdfAttachmentRow}>
-                    <FlatList
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      data={pdfAttachments}
-                      keyExtractor={(item) => item.id}
-                      style={styles.pdfAttachmentList}
-                      contentContainerStyle={styles.pdfAttachmentListContent}
-                      renderItem={({ item }) => (
-                        <View style={styles.pdfAttachmentChip}>
+              {pdfAttachments.length > 0 ? (
+                <View style={styles.pdfAttachmentRow}>
+                  <FlatList
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    data={pdfAttachments}
+                    keyExtractor={(item) => item.id}
+                    style={styles.pdfAttachmentList}
+                    contentContainerStyle={styles.pdfAttachmentListContent}
+                    renderItem={({ item }) => (
+                      <View style={styles.pdfAttachmentChip}>
+                        <Ionicons
+                          name="document-text-outline"
+                          size={13}
+                          color={appColors.icon.secondary}
+                        />
+                        <AppText
+                          variant="caption"
+                          style={styles.pdfAttachmentName}
+                          numberOfLines={1}
+                        >
+                          {item.name}
+                        </AppText>
+                        <AppText variant="caption" style={styles.pdfAttachmentStatus}>
+                          {item.status === "processing"
+                            ? "Indexing"
+                            : item.status === "ready"
+                              ? "Ready"
+                              : "Failed"}
+                        </AppText>
+                        <AppButton
+                          style={styles.pdfAttachmentRemove}
+                          onPress={() => handleRemovePdf(item.id)}
+                          activeOpacity={0.8}
+                        >
                           <Ionicons
-                            name="document-text-outline"
-                            size={13}
-                            color={appColors.icon.secondary}
+                            name="close"
+                            size={12}
+                            color={appColors.icon.muted}
                           />
-                          <AppText
-                            variant="caption"
-                            style={styles.pdfAttachmentName}
-                            numberOfLines={1}
-                          >
-                            {item.name}
-                          </AppText>
-                          <AppText variant="caption" style={styles.pdfAttachmentStatus}>
-                            {item.status === "processing"
-                              ? "Indexing"
-                              : item.status === "ready"
-                                ? "Ready"
-                                : "Failed"}
-                          </AppText>
-                          <AppButton
-                            style={styles.pdfAttachmentRemove}
-                            onPress={() => handleRemovePdf(item.id)}
-                            activeOpacity={0.8}
-                          >
-                            <Ionicons
-                              name="close"
-                              size={12}
-                              color={appColors.icon.muted}
-                            />
-                          </AppButton>
-                        </View>
-                      )}
-                    />
-                  </View>
-                ) : null}
+                        </AppButton>
+                      </View>
+                    )}
+                  />
+                </View>
+              ) : null}
 
-                <AppTextInput
-                  ref={inputRef}
-                  value={input}
-                  onChangeText={setInput}
-                  placeholder={
-                    isRecording
-                      ? "Listening..."
-                      : editingUserMessageId
-                        ? "Edit your message"
-                        : "Message Chat"
-                  }
-                  placeholderTextColor={appColors.text.weak}
-                  multiline
-                  maxLength={6000}
-                  textAlignVertical="top"
-                  inputStyle={styles.input}
-                  editable={!isModelLoading && !streaming && !isRecording}
-                />
+              <View style={styles.composerTopRow}>
+                <View style={styles.composerInputWrap}>
+                  <AppTextInput
+                    ref={inputRef}
+                    value={input}
+                    onChangeText={setInput}
+                    placeholder={
+                      isRecording
+                        ? "Listening..."
+                        : editingUserMessageId
+                          ? "Edit your message"
+                          : "Message Chat"
+                    }
+                    placeholderTextColor={appColors.text.weak}
+                    multiline
+                    maxLength={6000}
+                    textAlignVertical="top"
+                    inputStyle={styles.input}
+                    editable={!isModelLoading && !loading && !streaming && !isRecording}
+                  />
+                </View>
+
+                <AppButton
+                  onPress={streaming ? stopStreaming : handleSend}
+                  disabled={streaming ? false : !canSend}
+                  style={[
+                    styles.sendButton,
+                    streaming
+                      ? styles.stopButton
+                      : canSend
+                        ? styles.sendButtonEnabled
+                        : styles.sendButtonDisabled,
+                  ]}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name={streaming ? "stop" : "arrow-up"}
+                    size={18}
+                    color={
+                      streaming || canSend
+                        ? appColors.icon.inverse
+                        : appColors.icon.muted
+                    }
+                  />
+                </AppButton>
               </View>
 
-              <AppButton
-                onPress={handlePickPdf}
-                style={styles.attachButton}
-                activeOpacity={0.85}
-                disabled={isModelLoading || streaming}
-                accessibilityRole="button"
-                accessibilityLabel="Attach PDF document"
-              >
-                <Ionicons
-                  name="attach-outline"
-                  size={16}
-                  color={appColors.icon.secondary}
-                />
-              </AppButton>
+              <View style={styles.composerActionRow}>
+                <AppButton
+                  onPress={handlePickPdf}
+                  style={styles.attachButton}
+                  activeOpacity={0.85}
+                  disabled={isModelLoading || loading || streaming}
+                  accessibilityRole="button"
+                  accessibilityLabel="Attach PDF document"
+                >
+                  <Ionicons
+                    name="attach-outline"
+                    size={16}
+                    color={appColors.icon.secondary}
+                  />
+                </AppButton>
 
-              <AppButton
-                onPress={() => setUseWebSearch((current) => !current)}
-                style={[
-                  styles.webSearchButton,
-                  useWebSearch && styles.webSearchButtonActive,
-                ]}
-                activeOpacity={0.85}
-                disabled={isModelLoading || streaming}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  useWebSearch
-                    ? "Disable web search for next message"
-                    : "Enable web search for next message"
-                }
-              >
-                <Ionicons
-                  name={useWebSearch ? "globe" : "globe-outline"}
-                  size={16}
-                  color={
+                <AppButton
+                  onPress={() => setUseWebSearch((current) => !current)}
+                  style={[
+                    styles.webSearchButton,
+                    useWebSearch && styles.webSearchButtonActive,
+                  ]}
+                  activeOpacity={0.85}
+                  disabled={isModelLoading || loading || streaming}
+                  accessibilityRole="button"
+                  accessibilityLabel={
                     useWebSearch
-                      ? appColors.icon.inverse
-                      : appColors.icon.secondary
+                      ? "Disable web search for next message"
+                      : "Enable web search for next message"
                   }
-                />
-              </AppButton>
+                >
+                  <Ionicons
+                    name={useWebSearch ? "globe" : "globe-outline"}
+                    size={16}
+                    color={
+                      useWebSearch
+                        ? appColors.icon.inverse
+                        : appColors.icon.secondary
+                    }
+                  />
+                </AppButton>
 
-              <AppButton
-                onPress={handleToggleMic}
-                style={[styles.micButton, isRecording && styles.micButtonActive]}
-                activeOpacity={0.85}
-                disabled={isModelLoading || streaming}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  isRecording ? "Stop voice input" : "Start voice input"
-                }
-              >
-                <Ionicons
-                  name={isRecording ? "stop" : "mic-outline"}
-                  size={16}
-                  color={
-                    isRecording
-                      ? appColors.icon.inverse
-                      : appColors.icon.secondary
+                <AppButton
+                  onPress={handleToggleMic}
+                  style={[styles.micButton, isRecording && styles.micButtonActive]}
+                  activeOpacity={0.85}
+                  disabled={isModelLoading || loading || streaming}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    isRecording ? "Stop voice input" : "Start voice input"
                   }
-                />
-              </AppButton>
-
-              <AppButton
-                onPress={streaming ? stopStreaming : handleSend}
-                disabled={streaming ? false : !canSend}
-                style={[
-                  styles.sendButton,
-                  streaming
-                    ? styles.stopButton
-                    : canSend
-                      ? styles.sendButtonEnabled
-                      : styles.sendButtonDisabled,
-                ]}
-                activeOpacity={0.85}
-              >
-                <Ionicons
-                  name={streaming ? "stop" : "arrow-up"}
-                  size={18}
-                  color={
-                    streaming || canSend
-                      ? appColors.icon.inverse
-                      : appColors.icon.muted
-                  }
-                />
-              </AppButton>
+                >
+                  <Ionicons
+                    name={isRecording ? "stop" : "mic-outline"}
+                    size={16}
+                    color={
+                      isRecording
+                        ? appColors.icon.inverse
+                        : appColors.icon.secondary
+                    }
+                  />
+                </AppButton>
+              </View>
             </View>
           ) : (
             <AppButton

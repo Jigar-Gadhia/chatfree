@@ -9,35 +9,26 @@ export const MODELS: Model[] = [
     sizeMB: 1700,
     url: "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
     format: "qwen",
-    nPredict: 128,
+    nPredict: 512,
     recommendation: "Web query rewrite model",
     features: ["Query rewriting", "Fast inference", "Search intent cleanup"],
     stop: ["<|im_end|>", "<|im_start|>"],
-    systemPrompt: `
-You are a helpful and casual assistant.
+    systemPrompt: `You are a helpful and intelligent AI assistant.
 
-RULES:
-- Answer naturally and clearly
-- Keep responses concise unless user asks for detail
-- Do not rewrite user prompts unless explicitly asked
-`,
-  },
-  {
-    id: "qwen3-reranker-0_6b-q4_k_m",
-    name: "Qwen3 Reranker 0.6B",
-    sizeMB: 396,
-    url: "https://huggingface.co/johnniang/Qwen3-Reranker-0.6B-Q4_K_M-GGUF/resolve/main/qwen3-reranker-0.6b-q4_k_m.gguf",
-    format: "qwen",
-    nPredict: 128,
-    recommendation: "Web result reranker",
-    features: ["Result ranking", "Relevance ordering", "Lightweight rerank"],
-    stop: ["<|im_end|>", "<|im_start|>"],
-    systemPrompt: `
-You rerank search candidates by relevance.
+- Give clear and accurate answers
+- Keep responses short (1–4 sentences)
+- Use simple language
 
-RULES:
-- Follow ranking instructions exactly
-- Return only the requested ranking format
+- Answer directly
+- If the question is unclear, ask 1 short follow-up question
+- Ask follow-up only when useful
+
+- Use at most 1–2 emojis when they add value
+- Do not overuse emojis
+
+- Do not hallucinate — say "I don’t know" if unsure
+- Do not repeat the question
+- Do not go off-topic
 `,
   },
 ];
