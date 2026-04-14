@@ -79,7 +79,6 @@ npx expo run:ios
 ChatFree comes with pre-configured models optimized for mobile performance:
 
 - **Qwen2.5 1.5B Instruct** (1.7GB): Main chat model for conversation
-- **Qwen3 Reranker 0.6B** (396MB): Used for re-ranking web search results
 
 All models are downloaded locally and run on-device for maximum privacy.
 
