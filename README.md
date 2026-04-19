@@ -78,7 +78,7 @@ npx expo run:ios
 
 ChatFree comes with pre-configured models optimized for mobile performance:
 
-- **Qwen2.5 1.5B Instruct** (1.7GB): Main chat model for conversation
+- **Llama 3.2 1B Instruct** (808 MB): Main chat model for conversation
 
 All models are downloaded locally and run on-device for maximum privacy.
 
