@@ -5,7 +5,7 @@ export type Model = {
   name: string;
   sizeMB: number;
   url: string;
-  format: "plain" | "qwen" | "chatml" | "qwen-think";
+  format: "plain" | "qwen" | "llama3";
   nPredict: number;
   recommendation?: string;
   features?: string[];
@@ -13,7 +13,12 @@ export type Model = {
   systemPrompt?: string;
 };
 
-export type DownloadStatus = "idle" | "downloading" | "completed" | "cancelled" | "failed";
+export type DownloadStatus =
+  | "idle"
+  | "downloading"
+  | "completed"
+  | "cancelled"
+  | "failed";
 
 export type DownloadState = {
   progress: number;
