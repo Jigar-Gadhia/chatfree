@@ -402,7 +402,7 @@ export const ChatMessageRow = React.memo(
                   style={[
                     styles.messageAction,
                     (!selectedModelId || streaming || isModelLoading) &&
-                      styles.messageActionDisabled,
+                    styles.messageActionDisabled,
                   ]}
                   onPress={() => onRegenerate(item.id)}
                   disabled={!selectedModelId || streaming || isModelLoading}

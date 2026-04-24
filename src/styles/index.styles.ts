@@ -290,9 +290,9 @@ export const createIndexStyles = (appColors: AppColorsType) =>
     },
     composerWrap: {
       paddingHorizontal: 10,
-      paddingTop: 8,
+      // paddingTop: 8,
       paddingBottom: 10,
-      borderTopWidth: 1,
+      // borderTopWidth: 1,
       borderTopColor: appColors.border.default,
       backgroundColor: appColors.bg.screen,
     },

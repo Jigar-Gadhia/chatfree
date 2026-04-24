@@ -278,6 +278,10 @@ export const useModelStore = create<ModelStore>((set, get) => ({
     try {
       await downloadResumable.downloadAsync();
 
+      if (get().downloads[model.id]?.status === "cancelled") {
+        return;
+      }
+
       const updated = {
         ...get().downloads,
         [model.id]: {
@@ -290,6 +294,10 @@ export const useModelStore = create<ModelStore>((set, get) => ({
       set({ downloads: updated, lastError: null });
       await get().persist(updated);
     } catch (e) {
+      if (get().downloads[model.id]?.status === "cancelled") {
+        return;
+      }
+
       const msg = logError("downloadModel", e);
       set((state) => ({
         downloads: {

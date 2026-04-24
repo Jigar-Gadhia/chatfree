@@ -43,6 +43,7 @@ export default function ModelCard({ model }: Props) {
   const isDownloading = state?.status === "downloading";
   const isDownloaded = state?.status === "completed";
   const isFailed = state?.status === "failed";
+  const isCancelled = state?.status === "cancelled";
   const isActive = selectedModelId === model.id;
   const isBusy = isModelLoading;
   const showUseLoading = isBusy && loadingThisModel;
@@ -152,7 +153,7 @@ export default function ModelCard({ model }: Props) {
         </View>
       </View>
 
-      {!state || isFailed ? (
+      {!state || isFailed || isCancelled ? (
         <>
           {isFailed ? (
             <View style={styles.errorBanner}>
