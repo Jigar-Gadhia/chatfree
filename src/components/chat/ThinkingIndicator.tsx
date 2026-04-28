@@ -1,7 +1,17 @@
 import AppText from "@/src/components/ui/AppText";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import React from "react";
-import { View } from "react-native";
+import React, { useEffect } from "react";
+import Animated, {
+  FadeInDown,
+  FadeOutDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
+
+const AnimatedIcon = Animated.createAnimatedComponent(Ionicons);
 
 interface ThinkingIndicatorProps {
   loading: boolean;
@@ -20,17 +30,40 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
   appColors,
   styles,
 }) => {
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    scale.value = withRepeat(
+      withSequence(
+        withTiming(-2, { duration: 500 }), // bounce up
+        withTiming(1, { duration: 500 }), // back
+      ),
+      -1,
+      true,
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: scale.value }],
+  }));
+
   if (!(loading || isModelLoading) || streaming) {
     return null;
   }
 
   return (
-    <View style={styles.thinkingBar}>
-      <Ionicons
-        name="ellipsis-horizontal"
-        size={16}
+    <Animated.View
+      entering={FadeInDown}
+      exiting={FadeOutDown}
+      style={styles.thinkingBar}
+    >
+      <AnimatedIcon
+        name="planet-outline"
+        size={18}
         color={appColors.icon.muted}
+        style={animatedStyle}
       />
+
       <AppText variant="caption" style={styles.thinkingText}>
         {isModelLoading
           ? "Loading model..."
@@ -44,6 +77,6 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
                   ? "Summarizing web results..."
                   : "Thinking..."}
       </AppText>
-    </View>
+    </Animated.View>
   );
 };

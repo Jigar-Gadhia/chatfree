@@ -81,7 +81,9 @@ function ChatRow({
         hitSlop={6}
         style={styles.chatRowMainButton}
       >
-        <View style={[styles.chatIconWrap, isActive && styles.chatIconWrapActive]}>
+        <View
+          style={[styles.chatIconWrap, isActive && styles.chatIconWrapActive]}
+        >
           <Ionicons
             name="chatbubble-ellipses-outline"
             size={13}
@@ -92,7 +94,11 @@ function ChatRow({
           <AppText variant="body" style={styles.chatTitle} numberOfLines={1}>
             {item.title}
           </AppText>
-          <AppText variant="caption" style={styles.chatPreview} numberOfLines={1}>
+          <AppText
+            variant="caption"
+            style={styles.chatPreview}
+            numberOfLines={1}
+          >
             {getChatPreview(item)}
           </AppText>
         </View>
@@ -111,7 +117,11 @@ function ChatRow({
         accessibilityRole="button"
         accessibilityLabel={`Delete chat ${item.title}`}
       >
-        <Ionicons name="trash-outline" size={14} color={appColors.icon.danger} />
+        <Ionicons
+          name="trash-outline"
+          size={14}
+          color={appColors.icon.danger}
+        />
       </AppButton>
     </View>
   );
@@ -128,7 +138,9 @@ export function ChatDrawer({
   onDeleteChat,
 }: ChatDrawerProps) {
   const styles = useMemo(() => createChatDrawerStyles(appColors), [appColors]);
-  const [pendingDeleteChatId, setPendingDeleteChatId] = useState<string | null>(null);
+  const [pendingDeleteChatId, setPendingDeleteChatId] = useState<string | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const insets = useSafeAreaInsets();
   const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -142,7 +154,9 @@ export function ChatDrawer({
         .map((message) => message.text)
         .join(" ")
         .toLowerCase();
-      return title.includes(normalizedQuery) || content.includes(normalizedQuery);
+      return (
+        title.includes(normalizedQuery) || content.includes(normalizedQuery)
+      );
     });
   }, [chats, normalizedQuery]);
 
@@ -206,7 +220,11 @@ export function ChatDrawer({
 
       <View style={styles.searchWrap}>
         <View style={styles.searchIconWrap}>
-          <Ionicons name="search-outline" size={13} color={appColors.icon.muted} />
+          <Ionicons
+            name="search-outline"
+            size={13}
+            color={appColors.icon.muted}
+          />
         </View>
         <AppTextInput
           value={searchQuery}
@@ -231,7 +249,11 @@ export function ChatDrawer({
         ) : null}
       </View>
 
-      <DrawerSectionHeader styles={styles} label="Chats" count={filteredChats.length} />
+      <DrawerSectionHeader
+        styles={styles}
+        label="Chats"
+        count={filteredChats.length}
+      />
 
       <FlatList
         data={filteredChats}
@@ -287,7 +309,11 @@ export function ChatDrawer({
           accessibilityLabel="Open settings"
         >
           <View style={styles.settingsIconWrap}>
-            <Ionicons name="settings-outline" size={16} color={appColors.icon.secondary} />
+            <Ionicons
+              name="settings-outline"
+              size={16}
+              color={appColors.icon.secondary}
+            />
           </View>
           <AppText variant="body" style={styles.settingsText}>
             Settings

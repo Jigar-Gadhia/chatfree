@@ -83,7 +83,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                       >
                         {item.name}
                       </AppText>
-                      <AppText variant="caption" style={styles.pdfAttachmentStatus}>
+                      <AppText
+                        variant="caption"
+                        style={styles.pdfAttachmentStatus}
+                      >
                         {item.status === "processing"
                           ? "Indexing"
                           : item.status === "ready"
@@ -94,6 +97,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                         style={styles.pdfAttachmentRemove}
                         onPress={() => handleRemovePdf(item.id)}
                         activeOpacity={0.8}
+                        animated={false}
                       >
                         <Ionicons
                           name="close"
@@ -125,7 +129,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                   maxLength={6000}
                   textAlignVertical="top"
                   inputStyle={styles.input}
-                  editable={!isModelLoading && !loading && !streaming && !isRecording}
+                  editable={
+                    !isModelLoading && !loading && !streaming && !isRecording
+                  }
                 />
               </View>
 
@@ -141,6 +147,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                       : styles.sendButtonDisabled,
                 ]}
                 activeOpacity={0.85}
+                animated
               >
                 <Ionicons
                   name={streaming ? "stop" : "arrow-up"}
@@ -162,6 +169,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                 disabled={isModelLoading || loading || streaming}
                 accessibilityRole="button"
                 accessibilityLabel="Attach PDF document"
+                animated
               >
                 <Ionicons
                   name="attach-outline"
@@ -184,6 +192,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                     ? "Disable web search for next message"
                     : "Enable web search for next message"
                 }
+                animated
               >
                 <Ionicons
                   name={useWebSearch ? "globe" : "globe-outline"}
@@ -198,13 +207,17 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
               <AppButton
                 onPress={handleToggleMic}
-                style={[styles.micButton, isRecording && styles.micButtonActive]}
+                style={[
+                  styles.micButton,
+                  isRecording && styles.micButtonActive,
+                ]}
                 activeOpacity={0.85}
                 disabled={isModelLoading || loading || streaming}
                 accessibilityRole="button"
                 accessibilityLabel={
                   isRecording ? "Stop voice input" : "Start voice input"
                 }
+                animated
               >
                 <Ionicons
                   name={isRecording ? "stop" : "mic-outline"}
@@ -243,7 +256,11 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                 </AppText>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={16} color={appColors.icon.muted} />
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={appColors.icon.muted}
+            />
           </AppButton>
         )}
       </View>

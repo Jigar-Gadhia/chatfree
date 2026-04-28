@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AssistantAvatar from "./AssistantAvatar";
 
 type MessagePart =
   | { type: "text"; content: string }
@@ -338,9 +339,7 @@ export const ChatMessageRow = React.memo(
 
     return (
       <View style={styles.assistantRow}>
-        <View style={styles.assistantAvatar}>
-          <Ionicons name="sparkles" size={14} color={appColors.icon.inverse} />
-        </View>
+        <AssistantAvatar streaming={isLastAssistant} styles={styles} />
         <View style={styles.assistantBody}>
           <MessageContent
             styles={styles}
@@ -402,7 +401,7 @@ export const ChatMessageRow = React.memo(
                   style={[
                     styles.messageAction,
                     (!selectedModelId || streaming || isModelLoading) &&
-                    styles.messageActionDisabled,
+                      styles.messageActionDisabled,
                   ]}
                   onPress={() => onRegenerate(item.id)}
                   disabled={!selectedModelId || streaming || isModelLoading}

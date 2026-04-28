@@ -3,41 +3,68 @@ import { ChatMessageRow } from "@/src/components/chat/ChatMessageRow";
 import ScreenContainer from "@/src/components/ScreenContainer";
 import AppButton from "@/src/components/ui/AppButton";
 import { useAppColors } from "@/src/hooks/useAppColors";
-import { Message, MessageAttachment, MessageSource, useChatStore } from "@/src/store/chatStore";
+import {
+  Message,
+  MessageAttachment,
+  MessageSource,
+  useChatStore,
+} from "@/src/store/chatStore";
 import { useModelStore } from "@/src/store/modelStore";
+import { useOnboardingStore } from "@/src/store/onboardingStore";
 import { createIndexStyles } from "@/src/styles/index.styles";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system/legacy";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import * as Speech from "expo-speech";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Keyboard, ListRenderItemInfo, Platform, TextInput, View } from "react-native";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Keyboard,
+  ListRenderItemInfo,
+  TextInput,
+  View,
+} from "react-native";
 
 // New components and hooks
-import { SourcesModal } from "@/src/components/chat/SourcesModal";
-import { ChatEmptyState } from "@/src/components/chat/ChatEmptyState";
-import { ThinkingIndicator } from "@/src/components/chat/ThinkingIndicator";
 import { ChatComposer } from "@/src/components/chat/ChatComposer";
-import { useVoiceInput } from "@/src/hooks/useVoiceInput";
-import { usePdfAttachments } from "@/src/hooks/usePdfAttachments";
+import { ChatEmptyState } from "@/src/components/chat/ChatEmptyState";
+import { SourcesModal } from "@/src/components/chat/SourcesModal";
+import { ThinkingIndicator } from "@/src/components/chat/ThinkingIndicator";
 import { useChatAutoScroll } from "@/src/hooks/useChatAutoScroll";
 import { useKeyboardHeight } from "@/src/hooks/useKeyboardHeight";
+import { usePdfAttachments } from "@/src/hooks/usePdfAttachments";
+import { useVoiceInput } from "@/src/hooks/useVoiceInput";
 
 export default function ChatScreen() {
+  // === ALL HOOKS MUST BE AT THE TOP - NO CONDITIONAL RETURNS BEFORE THIS ===
+
+  // Onboarding state
+  const { hasCompletedOnboarding, init: initOnboarding } = useOnboardingStore();
+  const [initialized, setInitialized] = useState(false);
   const [input, setInput] = useState("");
   const [useWebSearch, setUseWebSearch] = useState(false);
-  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
-  const [editingUserMessageId, setEditingUserMessageId] = useState<string | null>(null);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(
+    null,
+  );
+  const [editingUserMessageId, setEditingUserMessageId] = useState<
+    string | null
+  >(null);
   const [sourceModalVisible, setSourceModalVisible] = useState(false);
   const [activeSources, setActiveSources] = useState<MessageSource[]>([]);
   const [drawerVisible, setDrawerVisible] = useState(false);
-  
+
   const appColors = useAppColors();
   const styles = useMemo(() => createIndexStyles(appColors), [appColors]);
-  
   const inputRef = useRef<TextInput>(null);
   const hasAutoFocusedRef = useRef(false);
 
@@ -59,6 +86,11 @@ export default function ChatScreen() {
   const { selectedModelId, init: initModels, isModelLoading } = useModelStore();
   const router = useRouter();
 
+  // Initialize onboarding store
+  useEffect(() => {
+    initOnboarding().then(() => setInitialized(true));
+  }, [initOnboarding]);
+
   useEffect(() => {
     initModels();
     init();
@@ -77,19 +109,24 @@ export default function ChatScreen() {
   }, [messages]);
   const latestAssistantText = useMemo(() => {
     if (!latestAssistantMessageId) return "";
-    return messages.find((message) => message.id === latestAssistantMessageId)?.text ?? "";
+    return (
+      messages.find((message) => message.id === latestAssistantMessageId)
+        ?.text ?? ""
+    );
   }, [latestAssistantMessageId, messages]);
 
-  const canSend = input.trim().length > 0 && !!selectedModelId && !isModelLoading && !loading;
-  
+  const canSend =
+    input.trim().length > 0 && !!selectedModelId && !isModelLoading && !loading;
+
   // Custom Hooks
   const keyboardHeight = useKeyboardHeight();
   const { isRecording, handleToggleMic, stopVoiceInput } = useVoiceInput(
-    input, 
-    setInput, 
-    isModelLoading || loading || streaming
+    input,
+    setInput,
+    isModelLoading || loading || streaming,
   );
-  const { pdfAttachments, handlePickPdf, handleRemovePdf, clearAttachments } = usePdfAttachments();
+  const { pdfAttachments, handlePickPdf, handleRemovePdf, clearAttachments } =
+    usePdfAttachments();
   const {
     flatListRef,
     onScroll,
@@ -98,7 +135,12 @@ export default function ChatScreen() {
     onScrollEndDrag,
     onContentSizeChange,
     onLayout,
-  } = useChatAutoScroll(messages.length, streaming, activeChatId, latestAssistantText);
+  } = useChatAutoScroll(
+    messages.length,
+    streaming,
+    activeChatId,
+    latestAssistantText,
+  );
 
   const listBottomPadding = 18 + 78 + keyboardHeight;
 
@@ -131,14 +173,15 @@ export default function ChatScreen() {
     const editingId = editingUserMessageId;
     setEditingUserMessageId(null);
     Keyboard.dismiss();
-    
+
     if (editingId) {
       await editUserMessage(editingId, text);
       return;
     }
 
     const readyAttachments = pdfAttachments.filter(
-      (attachment) => attachment.status === "ready" && attachment.chunks.length > 0,
+      (attachment) =>
+        attachment.status === "ready" && attachment.chunks.length > 0,
     );
     const userAttachments: MessageAttachment[] = readyAttachments.map(
       (attachment) => ({
@@ -147,9 +190,12 @@ export default function ChatScreen() {
     );
     const documentContext = readyAttachments
       .flatMap((attachment) =>
-        attachment.chunks.slice(0, 2).map(
-          (chunk, index) => `[${attachment.name} chunk ${index + 1}] ${chunk}`,
-        ),
+        attachment.chunks
+          .slice(0, 2)
+          .map(
+            (chunk, index) =>
+              `[${attachment.name} chunk ${index + 1}] ${chunk}`,
+          ),
       )
       .slice(0, 8)
       .join("\n\n");
@@ -232,13 +278,19 @@ export default function ChatScreen() {
       setSpeakingMessageId(messageId);
       Speech.speak(content, {
         onDone: () => {
-          setSpeakingMessageId((current) => (current === messageId ? null : current));
+          setSpeakingMessageId((current) =>
+            current === messageId ? null : current,
+          );
         },
         onStopped: () => {
-          setSpeakingMessageId((current) => (current === messageId ? null : current));
+          setSpeakingMessageId((current) =>
+            current === messageId ? null : current,
+          );
         },
         onError: () => {
-          setSpeakingMessageId((current) => (current === messageId ? null : current));
+          setSpeakingMessageId((current) =>
+            current === messageId ? null : current,
+          );
         },
       });
     },
@@ -311,6 +363,24 @@ export default function ChatScreen() {
 
   const openDrawer = () => setDrawerVisible(true);
   const closeDrawer = () => setDrawerVisible(false);
+
+  // === CONDITIONAL RETURNS MUST BE AFTER ALL HOOKS ===
+
+  // Show loading while initializing
+  if (!initialized) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  // Redirect to onboarding if not completed
+  if (hasCompletedOnboarding === false) {
+    return <Redirect href="/onboarding" />;
+  }
+
+  // === MAIN RENDER ===
 
   return (
     <ScreenContainer style={styles.screenContainer}>
