@@ -17,9 +17,10 @@ import {
 
 type Props = {
   model: Model;
+  loadStorage: () => void;
 };
 
-export default function ModelCard({ model }: Props) {
+export default function ModelCard({ model, loadStorage }: Props) {
   const appColors = useAppColors();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
 
@@ -51,11 +52,15 @@ export default function ModelCard({ model }: Props) {
   const downloadedMB = model.sizeMB * progress;
   const recommendationText = (model.recommendation ?? "").toLowerCase();
   const isSpeedRecommended = recommendationText.includes("speed");
-  const recommendationIcon = isSpeedRecommended ? "flash-outline" : "git-branch-outline";
+  const recommendationIcon = isSpeedRecommended
+    ? "flash-outline"
+    : "git-branch-outline";
   const recommendationColor = isSpeedRecommended
     ? appColors.icon.warning
     : appColors.icon.success;
-  const featureIcon = isSpeedRecommended ? "rocket-outline" : "code-slash-outline";
+  const featureIcon = isSpeedRecommended
+    ? "rocket-outline"
+    : "code-slash-outline";
 
   const formatSize = (sizeMB: number) => {
     if (sizeMB >= 1024) {
@@ -87,13 +92,13 @@ export default function ModelCard({ model }: Props) {
   return (
     <View style={[styles.card, isActive && styles.cardActive]}>
       <View style={styles.headerRow}>
-        <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
+        {/* <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
           <Ionicons
             name="sparkles"
             size={16}
             color={isActive ? "#ffffff" : appColors.text.secondary}
           />
-        </View>
+        </View> */}
 
         <View style={styles.infoWrap}>
           <View style={styles.titleRow}>
@@ -119,7 +124,9 @@ export default function ModelCard({ model }: Props) {
                   size={12}
                   color={recommendationColor}
                 />
-                <Text style={[styles.recommendText, { color: recommendationColor }]}>
+                <Text
+                  style={[styles.recommendText, { color: recommendationColor }]}
+                >
                   {model.recommendation}
                 </Text>
               </View>
@@ -127,11 +134,19 @@ export default function ModelCard({ model }: Props) {
           </View>
           <View style={styles.metaRow}>
             <View style={styles.metaChip}>
-              <Ionicons name="server-outline" size={12} color={appColors.icon.muted} />
+              <Ionicons
+                name="server-outline"
+                size={12}
+                color={appColors.icon.muted}
+              />
               <Text style={styles.metaText}>{model.sizeMB} MB</Text>
             </View>
             <View style={styles.metaChip}>
-              <Ionicons name="flash-outline" size={12} color={appColors.icon.muted} />
+              <Ionicons
+                name="flash-outline"
+                size={12}
+                color={appColors.icon.muted}
+              />
               <Text style={styles.metaText}>{model.nPredict} tok</Text>
             </View>
           </View>
@@ -157,7 +172,11 @@ export default function ModelCard({ model }: Props) {
         <>
           {isFailed ? (
             <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle-outline" size={13} color={appColors.icon.danger} />
+              <Ionicons
+                name="alert-circle-outline"
+                size={13}
+                color={appColors.icon.danger}
+              />
               <Text style={styles.errorBannerText}>
                 Download failed — check your connection and try again.
               </Text>
@@ -185,7 +204,10 @@ export default function ModelCard({ model }: Props) {
           <TouchableOpacity
             onPress={handleUseModel}
             disabled={isBusy}
-            style={[styles.primaryButton, isActive && styles.primaryButtonActive]}
+            style={[
+              styles.primaryButton,
+              isActive && styles.primaryButtonActive,
+            ]}
             activeOpacity={0.88}
           >
             {showUseLoading ? (
@@ -202,7 +224,11 @@ export default function ModelCard({ model }: Props) {
               />
             )}
             <Text style={styles.primaryButtonText}>
-              {showUseLoading ? "Loading..." : isActive ? "Active" : "Use model"}
+              {showUseLoading
+                ? "Loading..."
+                : isActive
+                  ? "Active"
+                  : "Use model"}
             </Text>
           </TouchableOpacity>
 
@@ -211,7 +237,11 @@ export default function ModelCard({ model }: Props) {
             style={styles.secondaryButton}
             activeOpacity={0.88}
           >
-            <Ionicons name="trash-outline" size={16} color={appColors.icon.danger} />
+            <Ionicons
+              name="trash-outline"
+              size={16}
+              color={appColors.icon.danger}
+            />
             <Text style={styles.secondaryButtonText}>Delete</Text>
           </TouchableOpacity>
         </View>
@@ -230,7 +260,8 @@ export default function ModelCard({ model }: Props) {
 
           <View style={styles.downloadMetaRow}>
             <Text style={styles.progressText}>
-              Downloading {formatSize(downloadedMB)} / {formatSize(model.sizeMB)}
+              Downloading {formatSize(downloadedMB)} /{" "}
+              {formatSize(model.sizeMB)}
             </Text>
 
             <TouchableOpacity
@@ -256,6 +287,7 @@ export default function ModelCard({ model }: Props) {
         onPrimary={() => {
           setDialogType(null);
           removeModel(model.id);
+          loadStorage();
         }}
       />
 

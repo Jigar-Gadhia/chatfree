@@ -16,7 +16,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import AssistantAvatar from "./AssistantAvatar";
 
 type MessagePart =
   | { type: "text"; content: string }
@@ -339,7 +338,7 @@ export const ChatMessageRow = React.memo(
 
     return (
       <View style={styles.assistantRow}>
-        <AssistantAvatar streaming={isLastAssistant} styles={styles} />
+        {/* <AssistantAvatar streaming={isLastAssistant} styles={styles} /> */}
         <View style={styles.assistantBody}>
           <MessageContent
             styles={styles}

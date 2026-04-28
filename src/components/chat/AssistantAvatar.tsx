@@ -42,7 +42,7 @@ export default function AssistantAvatar({ streaming = false, styles }: Props) {
 
   return (
     <AnimatedView style={[styles.assistantAvatar, animatedStyle]}>
-      <Ionicons name="sparkles" size={14} color="#fff" />
+      <Ionicons name="happy-outline" size={18} color="#fff" />
     </AnimatedView>
   );
 }
