@@ -1,138 +1,172 @@
-# ChatFree 🚀
+# ChatFree
 
-A privacy-focused, offline-capable chat application built with React Native and Expo that runs local LLMs on-device. ChatFree enables secure conversations without sending your data to external servers, while also providing web search capabilities when needed.
+ChatFree is a local-first AI chat app built with Expo and React Native. It runs quantized GGUF models on-device with `llama.rn`, keeps chat history locally, and adds optional tools such as Wikipedia-backed web search, PDF context, voice input, text-to-speech, and theme customization.
 
-## ✨ Features
+## Features
 
-- **Local LLM Integration**: Runs AI models directly on your device using [llama.rn](https://github.com/mbzuai-oryx/llama.rn)
-- **Offline Capability**: Chat without internet connection once models are downloaded
-- **Web Search**: Enhanced responses with real-time Wikipedia search integration (powered by REST API v1)
-- **PDF Processing**: Upload and chat with PDF documents using local text extraction
-- **Voice Input/Output**: Speech-to-text for input and text-to-speech for responses
-- **Multiple Models**: Support for various quantized LLMs optimized for mobile devices
-- **Cross-platform**: Works on both iOS and Android
-- **Privacy First**: Your conversations never leave your device (except when using web search)
+- On-device LLM inference with `llama.rn`
+- Downloadable local models from Hugging Face
+- Offline chat after a model is downloaded
+- Multi-chat history with local persistence
+- Optional Wikipedia web search with source links
+- PDF attachment support with local text extraction
+- Voice input and assistant read-aloud
+- Light, dark, and system theme modes
+- Model picker, onboarding, settings, chat drawer, regenerate, edit, copy, and share flows
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Framework**: React Native with Expo
-- **Navigation**: Expo Router
-- **State Management**: Zustand
-- **AI Engine**: llama.rn for on-device LLM execution
-- **UI Components**: React Native elements with custom styling
-- **Web Search**: Wikipedia REST API v1 integration with custom User-Agent identification
-- **PDF Processing**: Expo PDF text extraction
-- **Speech**: Expo Speech Recognition & Text-to-Speech
+- Expo 54 and React Native 0.81
+- Expo Router for navigation
+- Zustand for app state
+- `llama.rn` for local model execution
+- Expo FileSystem and SecureStore for local persistence
+- Expo Document Picker and PDF text extraction
+- Expo Speech and Speech Recognition
+- TypeScript and Expo ESLint
 
-## 🚀 Getting Started
+## Project Structure
 
-### Prerequisites
+```text
+app/
+  index.tsx          Main chat screen
+  modelscreen.tsx    Model download and selection
+  onboarding.tsx     First-run onboarding
+  settings.tsx       Theme/settings screen
 
-- Node.js (v18 or higher)
-- Expo CLI
-- For Android: Android Studio with emulator
-- For iOS: Xcode with iOS Simulator (macOS only)
+src/ai/
+  llm.ts             llama.rn model loading and streaming generation
+  webSearch.ts       Wikipedia search, dedupe, rerank, prompt grounding
+  pdf.ts             PDF text extraction and chunking
 
-### Installation
+src/components/
+  chat/              Chat UI, composer, drawer, message rows, sources modal
+  onboarding/        Onboarding screens
+  ui/                Shared UI primitives
 
-1. Clone the repository:
+src/data/
+  models.ts          Model catalog and prompt formatting entry point
+  prompts.ts         System prompt presets
 
-   ```bash
-   git clone https://github.com/yourusername/chatfree.git
-   cd chatfree
-   ```
+src/store/
+  chatStore.ts       Chat sessions, streaming, persistence, edit/regenerate
+  modelStore.ts      Model downloads, selection, loading
+  settingsStore.ts   Theme preference persistence
+  onboardingStore.ts Onboarding completion state
 
-2. Install dependencies:
+src/hooks/
+  usePdfAttachments.ts
+  useVoiceInput.ts
+  useChatAutoScroll.ts
+  useKeyboardHeight.ts
+  useAppColors.ts
 
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
-
-3. Web Search Identification:
-   Wikipedia's API requires a descriptive User-Agent. This is pre-configured in `src/ai/webSearch.ts`.
-
-4. Start the development server:
-   ```bash
-   npx expo start
-   # or with yarn
-   yarn expo start
-   ```
-
-### Building for Production
-
-For Android:
-
-```bash
-npx expo run:android
+constants/theme.ts   Dark/light app palettes
 ```
 
-For iOS:
+## Models
+
+The model catalog is defined in `src/data/models.ts`.
+
+| Model | Size | Format | Best For |
+| --- | ---: | --- | --- |
+| Llama 3.2 1B Instruct | 808 MB | Llama 3 | Small, general local chat |
+| Qwen2.5 1.5B Instruct | 1700 MB | Qwen/ChatML | General conversation and summarization |
+| SmolLM2 1.7B Instruct | 1100 MB | ChatML | Fast on-device Q&A |
+| Gemma 2 2B Instruct | 1600 MB | Gemma 2 | Reasoning and summarization |
+| Phi-3.5 Mini Instruct | 2200 MB | Phi 3 | Reasoning, coding, detailed answers |
+
+Models are downloaded into the app document directory and selected model metadata is stored with SecureStore.
+
+## Web Search
+
+Web search is optional and uses Wikipedia's REST search API:
+
+- Query simplification for long prompts
+- Result canonicalization and deduplication
+- Lightweight relevance ranking
+- Top results injected into the model prompt
+- Source links attached to assistant messages
+
+No search API key is required. Web search is the main path where user queries leave the device.
+
+## PDF Chat
+
+PDF attachments are selected with Expo Document Picker and parsed locally. The app extracts readable text, chunks it, and includes a bounded amount of document context in the next prompt. Attachments are cleared after sending.
+
+## Voice
+
+- Voice input uses `expo-speech-recognition`.
+- Assistant read-aloud uses `expo-speech`.
+- iOS microphone and speech recognition descriptions are configured in `app.json`.
+- Android includes `RECORD_AUDIO`.
+
+## Getting Started
+
+Install dependencies:
 
 ```bash
-npx expo run:ios
+npm install
 ```
 
-## 🤖 Models
+Start Expo:
 
-ChatFree comes with pre-configured models optimized for mobile performance:
+```bash
+npm run start
+```
 
-- **Llama 3.2 1B Instruct** (808 MB): Main chat model for conversation
+Run native builds:
 
-All models are downloaded locally and run on-device for maximum privacy.
+```bash
+npm run android
+npm run ios
+```
 
-## 🔍 Web Search Feature
+Fast Android install:
 
-ChatFree utilizes Wikipedia's modern REST API to provide grounded, factual information for your queries. This implementation prioritizes privacy and open data access.
+```bash
+npm run android:fast
+```
 
-1. **Wikipedia Integration**: Powered by the MediaWiki REST API v1 (`/w/rest.php/v1/search/page`).
-2. **Privacy First**: No external search engine API keys are required. All information is retrieved from Wikipedia's public repositories.
-3. **API Etiquette**: The application identifies itself via a custom User-Agent to ensure responsible API usage.
+Build Android release APK:
 
-The web search pipeline includes:
+```bash
+npm run build-apk
+```
 
-- **Query Simplification**: Optimizes user queries for better Wikipedia search matching.
-- **Content Pre-processing**: Clean extraction and HTML stripping for LLM compatibility.
-- **Token-based Reranking**: Results are scored and sorted based on their relevance to the original query.
+## Scripts
 
-## 📄 PDF Chat
+| Script | Purpose |
+| --- | --- |
+| `npm run start` | Start Expo dev server |
+| `npm run android` | Run Android native build |
+| `npm run android:fast` | Install Android debug build with lint/tests skipped |
+| `npm run ios` | Run iOS native build |
+| `npm run web` | Start Expo web |
+| `npm run lint` | Run Expo ESLint |
+| `npm run build-apk` | Build Android release APK for arm64-v8a |
+| `npm run build-all` | Build Android release APK for all configured architectures |
 
-Upload PDF documents directly in the chat interface to:
+## Development Checks
 
-- Extract text content locally
-- Include document context in your queries
-- Ask questions about specific documents
+```bash
+npx tsc --noEmit
+npm run lint
+```
 
-## 🎙️ Voice Features
+## Privacy Notes
 
-- Tap the microphone button to start voice input
-- Long-press to cancel recording
-- Tap the speaker icon on messages to hear responses aloud
+- Local chat, model inference, PDF parsing, and settings are designed to stay on-device.
+- Web search sends the search query to Wikipedia when enabled.
+- Model downloads are fetched from Hugging Face URLs listed in `src/data/models.ts`.
 
-## 🎨 Customization
+## Platform Notes
 
-- **Themes**: Light, dark, or system preference
-- **Model Selection**: Choose between different local models
-- **Settings**: Accessible via the menu in the top-left corner
+- App scheme: `chatfree`
+- Bundle/package id: `com.jiggs19.chatfree`
+- Expo new architecture is enabled.
+- UI follows the selected theme preference: system, light, or dark.
 
-## 📱 Supported Platforms
+## License
 
-- **iOS**: Requires iOS 13+
-- **Android**: Requires Android 7+
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for more details.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [llama.rn](https://github.com/mbzuai-oryx/llama.rn) for enabling on-device LLM execution
-- [Expo](https://expo.dev) for the cross-platform framework
-- [Hugging Face](https://huggingface.co) for hosting the quantized models
-- [Wikipedia REST API](https://www.mediawiki.org/wiki/API:REST_API) for grounded factual data
-- Built using the **Codex AI Coding Agent** for rapid development and implementation
+This repository does not currently include a license file. Add one before distributing the project publicly.

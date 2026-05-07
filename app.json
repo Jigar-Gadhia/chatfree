@@ -27,9 +27,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.jiggs19.chatfree",
       "softwareKeyboardLayoutMode": "pan",
-      "permissions": [
-        "RECORD_AUDIO"
-      ]
+      "permissions": ["RECORD_AUDIO"]
     },
     "web": {
       "output": "static",
@@ -43,9 +41,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#10A37F",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#10A37F"
           }
         }
       ],
