@@ -1,16 +1,32 @@
 // src/types/model.ts
 
+export type ModelFormat = "llama3" | "qwen" | "gemma" | "phi" | "plain";
+
+export type ResponseStyle = "concise" | "detailed" | "code" | "step-by-step";
+
+export interface ResponseFormatConfig {
+  maxSentences?: number;
+  preferMarkdown: boolean;
+  codeBlocksEnabled: boolean;
+  bulletPointsEnabled: boolean;
+  style: ResponseStyle;
+}
+
 export type Model = {
   id: string;
   name: string;
   sizeMB: number;
   url: string;
-  format: "plain" | "qwen" | "llama3";
+  format: ModelFormat;
   nPredict: number;
   recommendation?: string;
   features?: string[];
   stop?: string[];
   systemPrompt?: string;
+  responseFormat: ResponseFormatConfig; // 🆕 Explicit format config
+  contextLength: number; // 🆕 Track context limits
+  bosToken?: string; // 🆕 Beginning of sequence
+  eosToken?: string; // 🆕 End of sequence
 };
 
 export type DownloadStatus =

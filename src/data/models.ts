@@ -1,6 +1,15 @@
 // src/data/models.ts
 
 import { Model } from "../types/model";
+import {
+  buildGemmaPrompt,
+  buildLlama3Prompt,
+  buildPhiPrompt,
+  buildQwenPrompt,
+  PromptOptions,
+  trimToContextLimit,
+} from "../utils/promptBuilder";
+import { SYSTEM_PROMPTS } from "./prompts";
 
 export const MODELS: Model[] = [
   {
@@ -19,33 +28,17 @@ export const MODELS: Model[] = [
       "Lower memory usage",
     ],
     stop: ["<|eot_id|>"], // 🔄 Llama 3.2 stop token
-    systemPrompt: `You are ChatFree, a helpful, harmless, and honest AI assistant running locally on this device.
-
-CORE PRINCIPLES:
-- All conversations stay private and on-device unless using web search
-- Be concise and clear unless asked for detailed explanations
-- For complex questions, break down your reasoning step-by-step
-- If unsure about something, admit uncertainty and ask clarifying questions
-- Use provided context (from PDFs or web search) to inform your responses
-
-CAPABILITIES:
-- Local processing: Analyze PDFs and documents
-- Web-augmented: Can search the web when enabled
-- Voice-ready: Support for text-to-speech responses
-- Context-aware: Remember conversation history
-
-LIMITATIONS:
-- You run on a quantized 1B model (mobile-optimized)
-- Context window: ~1024 tokens (limit long conversations)
-- Training data cutoff: April 2024
-- No internet access unless web search is explicitly enabled
-
-RESPONSE GUIDELINES:
-- Use markdown formatting for clarity
-- For lists, use bullet points
-- For code, use code blocks with language specification
-- Be friendly but professional
-- Keep responses focused and actionable`,
+    contextLength: 1024, // 🆕
+    bosToken: "<|begin_of_text|>", // 🆕
+    eosToken: "<|eot_id|>", // 🆕
+    responseFormat: {
+      // 🆕
+      preferMarkdown: true,
+      codeBlocksEnabled: true,
+      bulletPointsEnabled: true,
+      style: "concise",
+    },
+    systemPrompt: SYSTEM_PROMPTS.llama3(["local processing", "PDF analysis"]),
   },
   {
     id: "qwen2_5-1_5b-instruct-q4_k_m",
@@ -66,74 +59,130 @@ RESPONSE GUIDELINES:
       "Low memory usage",
     ],
     stop: ["<|im_end|>", "<|im_start|>"],
-    systemPrompt: `You are a helpful and intelligent AI assistant.
-
-  - Give clear and accurate answers
-  - Keep responses short (1–4 sentences)
-  - Use simple language
-
-  - Answer directly
-  - If the question is unclear, ask 1 short follow-up question
-  - Ask follow-up only when useful
-
-  - Use at most 1–2 emojis when they add value
-  - Do not overuse emojis
-
-  - Do not hallucinate — say "I don’t know" if unsure
-  - Do not repeat the question
-  - Do not go off-topic
-  `,
+    contextLength: 2048, // 🆕 Qwen handles more context
+    responseFormat: {
+      // 🆕
+      preferMarkdown: false, // Qwen tends to over-format
+      codeBlocksEnabled: true,
+      bulletPointsEnabled: true,
+      style: "concise",
+    },
+    systemPrompt: SYSTEM_PROMPTS.qwen([
+      "general conversation",
+      "summarization",
+    ]),
   },
 ];
 
-type ChatMessage = {
+export type ChatMessage = {
   role: "user" | "assistant";
   text: string;
 };
 
-export const formatPrompt = (model: Model, history: ChatMessage[]) => {
+// export const formatPrompt = (model: Model, history: ChatMessage[]) => {
+//   switch (model.format) {
+//     case "llama3": {
+//       // 🆕 Llama 3.2 format
+//       const systemMessage = `<|start_header_id|>system<|end_header_id|>
+
+// ${model.systemPrompt || "You are a helpful assistant"}<|eot_id|>`;
+
+//       const turns = history
+//         .map((m) => {
+//           const role = m.role === "user" ? "user" : "assistant";
+//           return `<|start_header_id|>${role}<|end_header_id|>
+
+// ${m.text}<|eot_id|>`;
+//         })
+//         .join("\n");
+
+//       return (
+//         systemMessage +
+//         "\n" +
+//         turns +
+//         "\n" +
+//         `<|start_header_id|>assistant<|end_header_id|>\n`
+//       );
+//     }
+
+//     case "qwen": {
+//       const turns = history
+//         .map((m) =>
+//           m.role === "user"
+//             ? `<|im_start|>user\n${m.text}\n<|im_end|>`
+//             : `<|im_start|>assistant\n${m.text}\n<|im_end|>`,
+//         )
+//         .join("\n");
+//       return `<|im_start|>system\n${model.systemPrompt || "You are a helpful assistant"}\n<|im_end|>\n${turns}\n<|im_start|>assistant\n`;
+//     }
+
+//     case "plain":
+//     default: {
+//       const turns = history
+//         .map((m) => (m.role === "user" ? `User: ${m.text}` : `AI: ${m.text}`))
+//         .join("\n");
+//       return turns + "\nAI:";
+//     }
+//   }
+// };
+export const formatPrompt = (
+  model: Model,
+  history: ChatMessage[],
+  options: PromptOptions = {},
+): string => {
+  const DEFAULT_SYSTEM_PROMPT = "You are a helpful AI assistant.";
+  const systemPrompt =
+    options.systemOverride ?? model.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
+
+  // ✅ Trim history to fit context window
+  const safeHistory = options.trimHistory
+    ? trimToContextLimit(
+        history,
+        systemPrompt,
+        model.contextLength,
+        model.nPredict,
+      )
+    : history;
+
   switch (model.format) {
-    case "llama3": {
-      // 🆕 Llama 3.2 format
-      const systemMessage = `<|start_header_id|>system<|end_header_id|>
-
-${model.systemPrompt || "You are a helpful assistant"}<|eot_id|>`;
-
-      const turns = history
-        .map((m) => {
-          const role = m.role === "user" ? "user" : "assistant";
-          return `<|start_header_id|>${role}<|end_header_id|>
-
-${m.text}<|eot_id|>`;
-        })
-        .join("\n");
-
-      return (
-        systemMessage +
-        "\n" +
-        turns +
-        "\n" +
-        `<|start_header_id|>assistant<|end_header_id|>\n`
+    case "llama3":
+      return buildLlama3Prompt(
+        systemPrompt,
+        safeHistory,
+        options.prefillResponse,
       );
-    }
 
-    case "qwen": {
-      const turns = history
-        .map((m) =>
-          m.role === "user"
-            ? `<|im_start|>user\n${m.text}\n<|im_end|>`
-            : `<|im_start|>assistant\n${m.text}\n<|im_end|>`,
-        )
-        .join("\n");
-      return `<|im_start|>system\n${model.systemPrompt || "You are a helpful assistant"}\n<|im_end|>\n${turns}\n<|im_start|>assistant\n`;
-    }
+    case "qwen":
+      return buildQwenPrompt(
+        systemPrompt,
+        safeHistory,
+        options.prefillResponse,
+      );
+
+    case "phi":
+      return buildPhiPrompt(systemPrompt, safeHistory);
+
+    case "gemma":
+      return buildGemmaPrompt(systemPrompt, safeHistory);
 
     case "plain":
-    default: {
-      const turns = history
-        .map((m) => (m.role === "user" ? `User: ${m.text}` : `AI: ${m.text}`))
-        .join("\n");
-      return turns + "\nAI:";
-    }
+    default:
+      return buildPlainPrompt(systemPrompt, safeHistory);
   }
+};
+
+// ✅ Improved plain format with explicit system framing
+const buildPlainPrompt = (
+  systemPrompt: string,
+  history: ChatMessage[],
+): string => {
+  const sys = `### Instructions\n${systemPrompt}\n\n### Conversation`;
+
+  const turns = history
+    .map(({ role, text }) =>
+      role === "user" ? `Human: ${text.trim()}` : `Assistant: ${text.trim()}`,
+    )
+    .join("\n");
+
+  return [sys, turns, "Assistant:"].join("\n");
 };
