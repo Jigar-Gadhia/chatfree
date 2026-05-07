@@ -1,7 +1,7 @@
+import AppText from "@/src/components/ui/AppText";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import React from "react";
 import { View } from "react-native";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import AppText from "@/src/components/ui/AppText";
 
 interface ChatEmptyStateProps {
   selectedModelId: string | null;
@@ -17,7 +17,11 @@ export const ChatEmptyState: React.FC<ChatEmptyStateProps> = ({
   return (
     <View style={styles.emptyWrap}>
       <View style={styles.logoBubble}>
-        <Ionicons name="sparkles" size={26} color={appColors.text.secondary} />
+        <Ionicons
+          name="happy-outline"
+          size={26}
+          color={appColors.text.secondary}
+        />
       </View>
       <AppText variant="title" style={styles.emptyTitle}>
         How can I help today?

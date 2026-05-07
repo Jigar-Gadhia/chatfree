@@ -1,14 +1,13 @@
-// src/utils/promptBuilder.ts
-
 import { ChatMessage } from "../data/models";
 
 export interface PromptOptions {
-  systemOverride?: string; // Allow runtime system prompt injection
-  prefillResponse?: string; // Prefill assistant response start
-  trimHistory?: boolean; // Auto-trim to fit context
+  systemOverride?: string;
+  prefillResponse?: string;
+  trimHistory?: boolean;
 }
 
 // ─── Token estimation (rough: 1 token ≈ 4 chars) ─────────────────────────────
+
 const estimateTokens = (text: string): number => Math.ceil(text.length / 4);
 
 export const trimToContextLimit = (
@@ -23,7 +22,6 @@ export const trimToContextLimit = (
   let used = 0;
   const trimmed: ChatMessage[] = [];
 
-  // ✅ Always keep the latest message, trim from oldest
   for (let i = history.length - 1; i >= 0; i--) {
     const tokens = estimateTokens(history[i].text);
     if (used + tokens > available) break;
@@ -54,11 +52,9 @@ export const buildLlama3Prompt = (
     .join("\n");
 
   const assistantHeader = `<|start_header_id|>assistant<|end_header_id|>\n\n`;
-
-  // ✅ Prefill steers the response format
-  const prefillText = prefill ? prefill : "";
-
-  return [sys, turns, assistantHeader + prefillText].filter(Boolean).join("\n");
+  return [sys, turns, assistantHeader + (prefill ?? "")]
+    .filter(Boolean)
+    .join("\n");
 };
 
 export const buildQwenPrompt = (
@@ -77,14 +73,22 @@ export const buildQwenPrompt = (
     .join("\n");
 
   const assistantStart = `<|im_start|>assistant\n${prefill ?? ""}`;
-
   return [sys, turns, assistantStart].join("\n");
 };
+
+// SmolLM2 uses standard ChatML — identical structure to Qwen, kept separate
+// so format strings stay meaningful and future divergence is easy to handle
+export const buildChatMLPrompt = (
+  systemPrompt: string,
+  history: ChatMessage[],
+  prefill?: string,
+): string => buildQwenPrompt(systemPrompt, history, prefill);
 
 export const buildPhiPrompt = (
   systemPrompt: string,
   history: ChatMessage[],
 ): string => {
+  // Works for both "phi" and "phi3" — Phi-3/3.5 uses the same <|system|> template
   const sys = `<|system|>\n${systemPrompt}<|end|>`;
 
   const turns = history
@@ -98,17 +102,14 @@ export const buildPhiPrompt = (
   return [sys, turns, "<|assistant|>"].join("\n");
 };
 
-export const buildGemmaPrompt = (
+export const buildGemma2Prompt = (
   systemPrompt: string,
   history: ChatMessage[],
 ): string => {
-  // Gemma injects system prompt as first user turn
-  const firstTurn = history[0]
-    ? `<start_of_turn>user\n${systemPrompt}\n\n${history[0].text}<end_of_turn>`
-    : `<start_of_turn>user\n${systemPrompt}<end_of_turn>`;
+  // Gemma 2 IT supports a native system turn
+  const sys = `<start_of_turn>system\n${systemPrompt}<end_of_turn>`;
 
-  const remainingTurns = history
-    .slice(1)
+  const turns = history
     .map(({ role, text }) =>
       role === "user"
         ? `<start_of_turn>user\n${text.trim()}<end_of_turn>`
@@ -116,5 +117,5 @@ export const buildGemmaPrompt = (
     )
     .join("\n");
 
-  return [firstTurn, remainingTurns, "<start_of_turn>model"].join("\n");
+  return [sys, turns, "<start_of_turn>model"].join("\n");
 };

@@ -105,33 +105,30 @@ export default function ModelCard({ model, loadStorage }: Props) {
             <Text style={styles.name} numberOfLines={1}>
               {model.name}
             </Text>
-            {model.recommendation ? (
-              <View
-                style={[
-                  styles.recommendChip,
-                  {
-                    backgroundColor: isSpeedRecommended
-                      ? appColors.bg.actionSecondary
-                      : appColors.bg.cardActive,
-                    borderColor: isSpeedRecommended
-                      ? appColors.border.actionSecondary
-                      : appColors.border.cardActive,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name={recommendationIcon}
-                  size={12}
-                  color={recommendationColor}
-                />
-                <Text
-                  style={[styles.recommendText, { color: recommendationColor }]}
-                >
-                  {model.recommendation}
-                </Text>
-              </View>
-            ) : null}
           </View>
+          {model.recommendation ? (
+            <View
+              style={[
+                styles.recommendChip,
+                {
+                  backgroundColor: isActive
+                    ? appColors.bg.cardActive
+                    : appColors.bg.card,
+                },
+              ]}
+            >
+              <Ionicons
+                name={recommendationIcon}
+                size={12}
+                color={recommendationColor}
+              />
+              <Text
+                style={[styles.recommendText, { color: recommendationColor }]}
+              >
+                {model.recommendation}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.metaRow}>
             <View style={styles.metaChip}>
               <Ionicons
@@ -359,12 +356,9 @@ const createStyles = (appColors: AppColorsType) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
+      marginVertical: 10,
       borderRadius: 999,
-      paddingHorizontal: 10,
       paddingVertical: 5,
-      backgroundColor: appColors.bg.cardActive,
-      borderWidth: 1,
-      borderColor: appColors.border.cardActive,
     },
     recommendText: {
       color: appColors.text.primary,
@@ -449,7 +443,7 @@ const createStyles = (appColors: AppColorsType) =>
     secondaryButton: {
       marginTop: 12,
       borderRadius: 12,
-      backgroundColor: appColors.bg.actionSecondary,
+      backgroundColor: appColors.bg.surface,
       borderWidth: 1,
       borderColor: appColors.border.actionSecondary,
       flexDirection: "row",

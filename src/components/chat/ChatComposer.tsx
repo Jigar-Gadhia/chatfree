@@ -2,6 +2,7 @@ import AnimatedKeyboardView from "@/src/components/AnimatedKeyboardView";
 import AppButton from "@/src/components/ui/AppButton";
 import AppText from "@/src/components/ui/AppText";
 import AppTextInput from "@/src/components/ui/AppTextInput";
+import { MODELS } from "@/src/data/models";
 import { PdfAttachment } from "@/src/hooks/usePdfAttachments";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
@@ -54,6 +55,8 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   styles,
 }) => {
   const router = useRouter();
+  const selectedModelName =
+    MODELS.find((model) => model.id === selectedModelId)?.name ?? "Model";
 
   return (
     <AnimatedKeyboardView>
@@ -163,6 +166,29 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
             <View style={styles.composerActionRow}>
               <AppButton
+                onPress={() => router.push("/modelscreen")}
+                style={styles.composerModelButton}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={`Current model: ${selectedModelName}`}
+              >
+                <Ionicons
+                  name="hardware-chip-outline"
+                  size={16}
+                  color={appColors.icon.secondary}
+                />
+                <AppText
+                  variant="caption"
+                  style={styles.composerModelButtonText}
+                  numberOfLines={1}
+                >
+                  {selectedModelName}
+                </AppText>
+              </AppButton>
+
+              <View style={styles.composerActionSpacer} />
+
+              <AppButton
                 onPress={handlePickPdf}
                 style={styles.attachButton}
                 activeOpacity={0.85}
@@ -263,6 +289,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             />
           </AppButton>
         )}
+        <AppText variant="caption" style={styles.composerDisclaimer}>
+          AI responses can be inaccurate. Verify important information.
+        </AppText>
       </View>
     </AnimatedKeyboardView>
   );

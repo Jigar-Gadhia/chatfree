@@ -160,7 +160,7 @@ const createStyles = (appColors: AppColorsType) =>
     },
     statCard: {
       flex: 1,
-      backgroundColor: appColors.bg.surfaceAlt,
+      backgroundColor: appColors.bg.surface,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: appColors.border.default,

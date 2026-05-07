@@ -305,6 +305,14 @@ export const createIndexStyles = (appColors: AppColorsType) =>
       paddingHorizontal: 12,
       paddingVertical: 10,
     },
+    composerDisclaimer: {
+      color: appColors.text.weak,
+      fontSize: 11,
+      lineHeight: 15,
+      textAlign: "center",
+      marginTop: 6,
+      paddingHorizontal: 8,
+    },
     composerTopRow: {
       flexDirection: "row",
       alignItems: "flex-end",
@@ -313,6 +321,9 @@ export const createIndexStyles = (appColors: AppColorsType) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
+    },
+    composerActionSpacer: {
+      flex: 1,
     },
     composerInputWrap: {
       flex: 1,
@@ -401,6 +412,23 @@ export const createIndexStyles = (appColors: AppColorsType) =>
     },
     micButtonActive: {
       backgroundColor: appColors.bg.stop,
+    },
+    composerModelButton: {
+      height: 34,
+      maxWidth: 190,
+      borderRadius: 17,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 6,
+      paddingHorizontal: 11,
+      backgroundColor: appColors.bg.actionSecondary,
+    },
+    composerModelButtonText: {
+      flexShrink: 1,
+      color: appColors.text.secondary,
+      fontWeight: "600",
+      maxWidth: 142,
     },
     sendButton: {
       width: 34,

@@ -55,7 +55,7 @@ const SLIDES: SlideData[] = [
     title: "Smart Features",
     description:
       "Voice input/output, PDF chat, web search integration, and multiple model support.",
-    icon: "sparkles-outline",
+    icon: "hardware-chip-outline",
     gradient: ["#1a472a", "#12331f", "#0a2214"] as const,
   },
 ];

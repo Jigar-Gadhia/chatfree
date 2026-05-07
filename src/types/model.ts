@@ -1,6 +1,12 @@
 // src/types/model.ts
 
-export type ModelFormat = "llama3" | "qwen" | "gemma" | "phi" | "plain";
+export type ModelFormat =
+  | "llama3"
+  | "qwen"
+  | "gemma2"
+  | "phi3"
+  | "plain"
+  | "chatml";
 
 export type ResponseStyle = "concise" | "detailed" | "code" | "step-by-step";
 

@@ -2,7 +2,8 @@
 
 import { Model } from "../types/model";
 import {
-  buildGemmaPrompt,
+  buildChatMLPrompt,
+  buildGemma2Prompt,
   buildLlama3Prompt,
   buildPhiPrompt,
   buildQwenPrompt,
@@ -72,6 +73,88 @@ export const MODELS: Model[] = [
       "summarization",
     ]),
   },
+  {
+    id: "smollm2-1_7b-instruct-q4_k_m",
+    name: "SmolLM2 1.7B Instruct",
+    sizeMB: 1100,
+    url: "https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF/resolve/main/smollm2-1.7b-instruct-q4_k_m.gguf",
+    format: "chatml",
+    nPredict: 512,
+    recommendation: "Fastest inference, lowest RAM footprint",
+    features: [
+      "Optimized for on-device use",
+      "Strong instruction following for size",
+      "Minimal RAM usage",
+      "Great for quick Q&A",
+    ],
+    stop: ["<|im_end|>"],
+    contextLength: 2048,
+    bosToken: "<|im_start|>",
+    eosToken: "<|im_end|>",
+    responseFormat: {
+      preferMarkdown: false,
+      codeBlocksEnabled: true,
+      bulletPointsEnabled: true,
+      style: "concise",
+    },
+    systemPrompt: SYSTEM_PROMPTS.chatml(["quick answers", "on-device tasks"]),
+  },
+  {
+    id: "gemma2-2b-instruct-q4_k_m",
+    name: "Gemma 2 2B Instruct",
+    sizeMB: 1600,
+    url: "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf",
+    format: "gemma2",
+    nPredict: 512,
+    recommendation: "Best overall quality under 2GB",
+    features: [
+      "Google's optimized 2B model",
+      "Punches above its weight class",
+      "Great at reasoning and summarization",
+      "Sliding window attention — efficient on long inputs",
+    ],
+    stop: ["<end_of_turn>"],
+    contextLength: 2048,
+    bosToken: "<bos>",
+    eosToken: "<eos>",
+    responseFormat: {
+      preferMarkdown: true,
+      codeBlocksEnabled: true,
+      bulletPointsEnabled: true,
+      style: "concise",
+    },
+    systemPrompt: SYSTEM_PROMPTS.gemma2(["summarization", "reasoning"]),
+  },
+  {
+    id: "phi-3.5-mini-instruct-q4_k_m",
+    name: "Phi-3.5 Mini Instruct",
+    sizeMB: 2200,
+    url: "https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf",
+    format: "phi3",
+    nPredict: 512,
+    recommendation: "Best reasoning per MB — Microsoft's flagship small model",
+    features: [
+      "SOTA reasoning at this size tier",
+      "Trained on 3.4T tokens",
+      "128K native context (capped to 2048 on mobile)",
+      "Excellent at structured output and code",
+    ],
+    stop: ["<|end|>"],
+    contextLength: 2048,
+    bosToken: "<|endoftext|>",
+    eosToken: "<|end|>",
+    responseFormat: {
+      preferMarkdown: true,
+      codeBlocksEnabled: true,
+      bulletPointsEnabled: true,
+      style: "detailed",
+    },
+    systemPrompt: SYSTEM_PROMPTS.phi3([
+      "coding",
+      "reasoning",
+      "structured output",
+    ]),
+  },
 ];
 
 export type ChatMessage = {
@@ -79,52 +162,6 @@ export type ChatMessage = {
   text: string;
 };
 
-// export const formatPrompt = (model: Model, history: ChatMessage[]) => {
-//   switch (model.format) {
-//     case "llama3": {
-//       // 🆕 Llama 3.2 format
-//       const systemMessage = `<|start_header_id|>system<|end_header_id|>
-
-// ${model.systemPrompt || "You are a helpful assistant"}<|eot_id|>`;
-
-//       const turns = history
-//         .map((m) => {
-//           const role = m.role === "user" ? "user" : "assistant";
-//           return `<|start_header_id|>${role}<|end_header_id|>
-
-// ${m.text}<|eot_id|>`;
-//         })
-//         .join("\n");
-
-//       return (
-//         systemMessage +
-//         "\n" +
-//         turns +
-//         "\n" +
-//         `<|start_header_id|>assistant<|end_header_id|>\n`
-//       );
-//     }
-
-//     case "qwen": {
-//       const turns = history
-//         .map((m) =>
-//           m.role === "user"
-//             ? `<|im_start|>user\n${m.text}\n<|im_end|>`
-//             : `<|im_start|>assistant\n${m.text}\n<|im_end|>`,
-//         )
-//         .join("\n");
-//       return `<|im_start|>system\n${model.systemPrompt || "You are a helpful assistant"}\n<|im_end|>\n${turns}\n<|im_start|>assistant\n`;
-//     }
-
-//     case "plain":
-//     default: {
-//       const turns = history
-//         .map((m) => (m.role === "user" ? `User: ${m.text}` : `AI: ${m.text}`))
-//         .join("\n");
-//       return turns + "\nAI:";
-//     }
-//   }
-// };
 export const formatPrompt = (
   model: Model,
   history: ChatMessage[],
@@ -152,6 +189,13 @@ export const formatPrompt = (
         options.prefillResponse,
       );
 
+    case "chatml":
+      return buildChatMLPrompt(
+        systemPrompt,
+        safeHistory,
+        options.prefillResponse,
+      );
+
     case "qwen":
       return buildQwenPrompt(
         systemPrompt,
@@ -159,11 +203,11 @@ export const formatPrompt = (
         options.prefillResponse,
       );
 
-    case "phi":
+    case "phi3":
       return buildPhiPrompt(systemPrompt, safeHistory);
 
-    case "gemma":
-      return buildGemmaPrompt(systemPrompt, safeHistory);
+    case "gemma2":
+      return buildGemma2Prompt(systemPrompt, safeHistory);
 
     case "plain":
     default:
