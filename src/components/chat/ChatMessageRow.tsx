@@ -991,7 +991,7 @@ const AssistantMessageContent = ({
               const content = node.content;
 
               return (
-                <View style={styles.codeBlock}>
+                <View key={`code-${node.index}`} style={styles.codeBlock}>
                   <TouchableOpacity
                     onPress={() => Clipboard.setStringAsync(content)}
                     style={styles.codeCopyButton}
