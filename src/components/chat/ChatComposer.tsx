@@ -125,7 +125,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                       ? "Listening..."
                       : editingUserMessageId
                         ? "Edit your message"
-                        : "Message Chat"
+                        : "How may I help you ?"
                   }
                   placeholderTextColor={appColors.text.weak}
                   multiline
@@ -169,6 +169,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                 onPress={() => router.push("/modelscreen")}
                 style={styles.composerModelButton}
                 activeOpacity={0.85}
+                disabled={isModelLoading || loading || streaming}
                 accessibilityRole="button"
                 accessibilityLabel={`Current model: ${selectedModelName}`}
               >

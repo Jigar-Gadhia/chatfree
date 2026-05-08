@@ -1,7 +1,9 @@
+import { Images } from "@/src/constants/images";
 import { useAppColors } from "@/src/hooks/useAppColors";
 import { useModelStore } from "@/src/store/modelStore";
 import { useOnboardingStore } from "@/src/store/onboardingStore";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
@@ -106,18 +108,19 @@ function WelcomeScreen({
   return (
     <View style={[styles.container, { backgroundColor: appColors.bg.screen }]}>
       <View style={styles.welcomeContent}>
-        <LinearGradient
+        {/* <LinearGradient
           colors={["#1a1a2e", "#16213e", "#0f3460"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.welcomeIconContainer}
-        >
-          <Ionicons
+        > */}
+        {/* <Ionicons
             name="chatbubbles-outline"
             size={80}
             color={appColors.icon.inverse}
-          />
-        </LinearGradient>
+          /> */}
+        <Image source={Images.logo} style={styles.logo} />
+        {/* </LinearGradient> */}
         <AppText
           variant="title"
           color={appColors.text.primary}
@@ -291,6 +294,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  logo: {
+    height: 80,
+    width: 80,
+    borderRadius: 20,
+    marginBottom: 30,
+  },
   slide: {
     width: SCREEN_WIDTH,
     flex: 1,
@@ -417,7 +426,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0f3460",
+    backgroundColor: "#10a37f",
     paddingHorizontal: 32,
     paddingVertical: 18,
     borderRadius: 30,

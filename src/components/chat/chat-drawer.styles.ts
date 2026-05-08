@@ -17,12 +17,14 @@ export const createChatDrawerStyles = (appColors: AppColorsType) =>
       shadowOffset: { width: 4, height: 10 },
       elevation: 16,
     },
+    logoImage: { height: 33, width: 33, borderRadius: 10 },
     hero: {
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: 6,
       paddingVertical: 6,
       marginBottom: 8,
+      gap: 5,
     },
     heroBadge: {
       width: 30,

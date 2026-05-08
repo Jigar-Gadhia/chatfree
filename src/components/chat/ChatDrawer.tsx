@@ -4,8 +4,10 @@ import AppDialog from "@/src/components/ui/AppDialog";
 import AppSlideDrawer from "@/src/components/ui/AppSlideDrawer";
 import AppText from "@/src/components/ui/AppText";
 import AppTextInput from "@/src/components/ui/AppTextInput";
+import { Images } from "@/src/constants/images";
 import { ChatSession } from "@/src/store/chatStore";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { Image } from "expo-image";
 import React, { useEffect, useMemo, useState } from "react";
 import { FlatList, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -189,18 +191,16 @@ export function ChatDrawer({
     >
       <View style={styles.hero}>
         <View style={styles.heroBadge}>
-          <Ionicons
+          {/* <Ionicons
             name="chatbubbles-outline"
             size={16}
             color={appColors.text.secondary}
-          />
+          /> */}
+          <Image source={Images.logo} style={styles.logoImage} />
         </View>
 
         <View style={styles.heroTextWrap}>
-          <AppText variant="caption" style={styles.brandLabel}>
-            chatfree
-          </AppText>
-          <AppText style={styles.title}>Chats</AppText>
+          <AppText style={styles.title}>Chatfree</AppText>
           <AppText variant="caption" style={styles.subtitle}>
             Your recent conversations
           </AppText>

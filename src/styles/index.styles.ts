@@ -195,6 +195,7 @@ export const createIndexStyles = (appColors: AppColorsType) =>
       paddingBottom: 10,
       paddingHorizontal: 10,
       position: "relative",
+      marginVertical: 10,
     },
     codeBlockLang: {
       position: "absolute",
