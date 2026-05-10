@@ -19,7 +19,7 @@ export const MODELS: Model[] = [
     sizeMB: 808, // 🎯 Much smaller!
     url: "https://huggingface.co/unsloth/Llama-3.2-1B-Instruct-GGUF/resolve/main/Llama-3.2-1B-Instruct-Q4_K_M.gguf",
     format: "llama3", // 🔄 Changed format
-    nPredict: 256, // Can predict more tokens
+    nPredict: 1024, // Can predict more tokens
     recommendation: "Best quality 1B model for mobile",
     features: [
       "26% better reasoning",
@@ -29,7 +29,7 @@ export const MODELS: Model[] = [
       "Lower memory usage",
     ],
     stop: ["<|eot_id|>"], // 🔄 Llama 3.2 stop token
-    contextLength: 1024, // 🆕
+    contextLength: 4096, // 🆕
     bosToken: "<|begin_of_text|>", // 🆕
     eosToken: "<|eot_id|>", // 🆕
     responseFormat: {
@@ -47,7 +47,7 @@ export const MODELS: Model[] = [
     sizeMB: 1700,
     url: "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
     format: "qwen",
-    nPredict: 512,
+    nPredict: 1024,
     recommendation: "lightweight assistant model",
     features: [
       "General conversation",
@@ -60,7 +60,7 @@ export const MODELS: Model[] = [
       "Low memory usage",
     ],
     stop: ["<|im_end|>", "<|im_start|>"],
-    contextLength: 2048, // 🆕 Qwen handles more context
+    contextLength: 4096, // 🆕 Qwen handles more context
     responseFormat: {
       // 🆕
       preferMarkdown: false, // Qwen tends to over-format
@@ -131,7 +131,7 @@ export const MODELS: Model[] = [
     sizeMB: 2200,
     url: "https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf",
     format: "phi3",
-    nPredict: 512,
+    nPredict: 1536,
     recommendation: "Best reasoning per MB — Microsoft's flagship small model",
     features: [
       "SOTA reasoning at this size tier",
@@ -140,7 +140,7 @@ export const MODELS: Model[] = [
       "Excellent at structured output and code",
     ],
     stop: ["<|end|>"],
-    contextLength: 2048,
+    contextLength: 4096,
     bosToken: "<|endoftext|>",
     eosToken: "<|end|>",
     responseFormat: {
@@ -155,6 +155,52 @@ export const MODELS: Model[] = [
       "structured output",
     ]),
   },
+  // {
+  //   id: "lfm2.5-1.2b-thinking-q4_k_m",
+  //   name: "LFM2.5 1.2B Thinking",
+
+  //   sizeMB: 890,
+
+  //   url: "https://huggingface.co/LiquidAI/LFM2.5-1.2B-Thinking-GGUF/resolve/main/LFM2.5-1.2B-Thinking-Q4_K_M.gguf",
+
+  //   format: "chatml",
+
+  //   nPredict: 1024,
+
+  //   recommendation: "Best mobile reasoning model under 1GB",
+
+  //   features: [
+  //     "Reasoning-focused small model",
+  //     "Excellent structured thinking",
+  //     "Fast on-device inference",
+  //     "Optimized for edge AI",
+  //     "Very low RAM usage",
+  //     "Strong coding capabilities",
+  //     "Long context support",
+  //     "Agentic task optimized",
+  //   ],
+
+  //   stop: ["<|im_end|>"],
+
+  //   contextLength: 4096,
+
+  //   bosToken: "<|im_start|>",
+  //   eosToken: "<|im_end|>",
+
+  //   responseFormat: {
+  //     preferMarkdown: true,
+  //     codeBlocksEnabled: true,
+  //     bulletPointsEnabled: true,
+  //     style: "detailed",
+  //   },
+
+  //   systemPrompt: SYSTEM_PROMPTS.chatml([
+  //     "reasoning",
+  //     "coding",
+  //     "structured output",
+  //     "agentic tasks",
+  //   ]),
+  // },
 ];
 
 export type ChatMessage = {

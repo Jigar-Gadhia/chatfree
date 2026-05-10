@@ -972,7 +972,18 @@ const AssistantMessageContent = ({
   appColors,
   text,
 }: AssistantMessageContentProps) => {
-  const markdown = useMemo(() => text.replace(/\$\$/g, "$"), [text]);
+  const markdown = useMemo(() => {
+    let processed = text.replace(/\$\$/g, "$");
+
+    // Fix incomplete fenced code blocks while streaming
+    const fenceCount = (processed.match(/```/g) || []).length;
+
+    if (fenceCount % 2 !== 0) {
+      processed += "\n```";
+    }
+
+    return processed;
+  }, [text]);
 
   const markdownStyles = useMemo(
     () => createMarkdownStyles(appColors),
