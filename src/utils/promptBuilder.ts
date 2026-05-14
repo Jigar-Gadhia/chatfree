@@ -23,7 +23,7 @@ export const trimToContextLimit = (
   const trimmed: ChatMessage[] = [];
 
   for (let i = history.length - 1; i >= 0; i--) {
-    const tokens = estimateTokens(history[i].text);
+    const tokens = estimateTokens(safeText(history[i].text));
     if (used + tokens > available) break;
     trimmed.unshift(history[i]);
     used += tokens;
@@ -33,6 +33,10 @@ export const trimToContextLimit = (
 };
 
 // ─── Format builders ──────────────────────────────────────────────────────────
+
+const safeText = (text: unknown): string => {
+  return String(text ?? "").trim();
+};
 
 export const buildLlama3Prompt = (
   systemPrompt: string,
@@ -46,7 +50,7 @@ export const buildLlama3Prompt = (
       const normalizedRole = role === "user" ? "user" : "assistant";
       return (
         `<|start_header_id|>${normalizedRole}<|end_header_id|>\n\n` +
-        `${text.trim()}<|eot_id|>`
+        `${safeText(text)}<|eot_id|>`
       );
     })
     .join("\n");
@@ -67,8 +71,8 @@ export const buildQwenPrompt = (
   const turns = history
     .map(({ role, text }) =>
       role === "user"
-        ? `<|im_start|>user\n${text.trim()}\n<|im_end|>`
-        : `<|im_start|>assistant\n${text.trim()}\n<|im_end|>`,
+        ? `<|im_start|>user\n${safeText(text)}\n<|im_end|>`
+        : `<|im_start|>assistant\n${safeText(text)}\n<|im_end|>`,
     )
     .join("\n");
 
@@ -94,8 +98,8 @@ export const buildPhiPrompt = (
   const turns = history
     .map(({ role, text }) =>
       role === "user"
-        ? `<|user|>\n${text.trim()}<|end|>`
-        : `<|assistant|>\n${text.trim()}<|end|>`,
+        ? `<|user|>\n${safeText(text)}<|end|>`
+        : `<|assistant|>\n${safeText(text)}<|end|>`,
     )
     .join("\n");
 
@@ -112,8 +116,8 @@ export const buildGemma2Prompt = (
   const turns = history
     .map(({ role, text }) =>
       role === "user"
-        ? `<start_of_turn>user\n${text.trim()}<end_of_turn>`
-        : `<start_of_turn>model\n${text.trim()}<end_of_turn>`,
+        ? `<start_of_turn>user\n${safeText(text)}<end_of_turn>`
+        : `<start_of_turn>model\n${safeText(text)}<end_of_turn>`,
     )
     .join("\n");
 

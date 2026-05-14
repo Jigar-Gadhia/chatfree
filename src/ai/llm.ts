@@ -1,58 +1,6 @@
-// import { initLlama } from "llama.rn";
-// import { formatPrompt, MODELS } from "../data/models";
-
-// let llamaContext: any = null;
-
-// export const loadModel = async (path: string) => {
-//   if (llamaContext) {
-//     await llamaContext.release();
-//     llamaContext = null;
-//   }
-
-//   llamaContext = await initLlama({
-//     model: path,
-//     n_ctx: 2048,
-//     n_threads: 4,
-//   });
-// };
-
-// export const isModelLoaded = () => llamaContext !== null;
-
-// export const stopGeneration = () => {
-//   if (llamaContext) {
-//     llamaContext.stopCompletion();
-//   }
-// };
-
-// export const generateStream = async (
-//   history: { role: "user" | "assistant"; text: string }[],
-//   modelId: string,
-//   onToken: (token: string) => void,
-// ): Promise<void> => {
-//   if (!llamaContext) {
-//     throw new Error("Model not loaded");
-//   }
-
-//   const model = MODELS.find((m) => m.id === modelId);
-//   if (!model) throw new Error("Model not found");
-
-//   const formattedPrompt = formatPrompt(model, history);
-
-//   await llamaContext.completion(
-//     {
-//       prompt: formattedPrompt,
-//       n_predict: model.nPredict,
-//       temperature: 0.65,
-//       stop: model.stop || [],
-//     },
-//     (data: { token: string }) => {
-//       if (data.token) {
-//         onToken(data.token);
-//       }
-//     },
-//   );
-// };
 import { initLlama } from "llama.rn";
+import { Platform } from "react-native";
+import DeviceInfo from "react-native-device-info";
 import { formatPrompt, MODELS } from "../data/models";
 
 const LLAMA_3_STOP = [
@@ -64,25 +12,86 @@ const LLAMA_3_STOP = [
 
 let llamaContext: any = null;
 
+interface LlamaDeviceConfig {
+  n_ctx: number;
+  n_threads: number;
+  n_batch: number;
+  n_gpu_layers: number;
+  flash_attn: boolean;
+  use_mmap: boolean;
+  use_mlock: boolean;
+  rope_freq_base: number;
+}
+
+export const getDeviceOptimizedConfig =
+  async (): Promise<LlamaDeviceConfig> => {
+    const totalMemory = await DeviceInfo.getTotalMemory();
+
+    const isLowRam =
+      Platform.OS === "android" ? DeviceInfo.isLowRamDevice() : false;
+
+    const ramGB = totalMemory / 1024 / 1024 / 1024;
+
+    // CPU estimation heuristic
+    let estimatedCores = 4;
+
+    if (ramGB >= 12) {
+      estimatedCores = 8;
+    } else if (ramGB >= 8) {
+      estimatedCores = 6;
+    } else if (ramGB >= 4) {
+      estimatedCores = 4;
+    } else {
+      estimatedCores = 2;
+    }
+
+    const isLowEnd = ramGB <= 4 || isLowRam;
+    const isHighEnd = ramGB > 8;
+
+    return {
+      n_ctx: isLowEnd ? 2048 : isHighEnd ? 8192 : 4096,
+
+      // Leave one core for UI
+      n_threads: Math.max(2, estimatedCores - 1),
+
+      n_batch: isLowEnd ? 256 : isHighEnd ? 1024 : 512,
+
+      n_gpu_layers:
+        Platform.OS === "ios"
+          ? isLowEnd
+            ? 20
+            : 99
+          : isLowEnd
+            ? 0
+            : isHighEnd
+              ? 50
+              : 35,
+
+      flash_attn: !isLowEnd,
+
+      use_mmap: true,
+
+      // safer on mobile
+      use_mlock: false,
+
+      rope_freq_base: 500000,
+    };
+  };
+
 export const loadModel = async (path: string) => {
   if (llamaContext) {
     await llamaContext.release();
     llamaContext = null;
   }
 
+  const deviceConfig = await getDeviceOptimizedConfig();
+
   llamaContext = await initLlama({
     model: path,
-    n_ctx: 4096, // ✅ was 1024 (mistakenly "increased" — actually halved)
-    n_threads: 4,
-    n_batch: 512, // ✅ added — faster prompt ingestion
-    n_gpu_layers: 99, // ✅ was false — true = fp16 KV cache (less VRAM)
-    use_mlock: false,
-    use_mmap: true,
-    flash_attn: true, // ✅ added — cuts memory bandwidth per token
-    rope_freq_base: 500000, // ✅ added — matches Meta's Llama 3.2 official config
+    ...deviceConfig,
   });
 
-  console.log("✅ Llama 3.2 1B model loaded");
+  console.log("✅ Model loaded with device-optimized config");
 };
 
 export const isModelLoaded = () => llamaContext !== null;

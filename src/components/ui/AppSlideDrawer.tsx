@@ -1,5 +1,5 @@
 import { useAppColors } from "@/src/hooks/useAppColors";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Modal,
@@ -37,11 +37,28 @@ export default function AppSlideDrawer({
 }: AppSlideDrawerProps) {
   const appColors = useAppColors();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => createStyles(appColors.overlay.dim), [appColors.overlay.dim]);
   const [mounted, setMounted] = useState(visible);
+
+  // ✅ Stable animated value — never recreated
   const progress = useRef(new Animated.Value(visible ? 1 : 0)).current;
-  const resolvedPanelTop = panelTop + (ignoreSafeArea ? 0 : insets.top);
-  const resolvedPanelBottom = panelBottom + (ignoreSafeArea ? 0 : insets.bottom);
+
+  // ✅ Stable interpolations — created once, never recreated
+  const translateX = useRef(
+    progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-slideDistance, 0],
+    }),
+  ).current;
+
+  const backdropOpacity = useRef(
+    progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    }),
+  ).current;
+
+  const resolvedTop = panelTop + (ignoreSafeArea ? 0 : insets.top);
+  const resolvedBottom = panelBottom + (ignoreSafeArea ? 0 : insets.bottom);
 
   useEffect(() => {
     if (visible) {
@@ -59,29 +76,9 @@ export default function AppSlideDrawer({
       duration: 180,
       useNativeDriver: true,
     }).start(({ finished }) => {
-      if (finished) {
-        setMounted(false);
-      }
+      if (finished) setMounted(false);
     });
-  }, [progress, visible]);
-
-  const translateX = useMemo(
-    () =>
-      progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [-slideDistance, 0],
-      }),
-    [progress, slideDistance],
-  );
-
-  const backdropOpacity = useMemo(
-    () =>
-      progress.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, 1],
-      }),
-    [progress],
-  );
+  }, [visible]);
 
   if (!mounted) return null;
 
@@ -95,23 +92,32 @@ export default function AppSlideDrawer({
       navigationBarTranslucent
     >
       <View style={styles.root}>
+        {/* ✅ Backdrop dim layer */}
         <Animated.View
           pointerEvents="none"
-          style={[styles.backdropLayer, { opacity: backdropOpacity }]}
+          style={[
+            styles.backdropLayer,
+            {
+              backgroundColor: appColors.overlay.dim,
+              opacity: backdropOpacity,
+            },
+          ]}
         />
 
+        {/* ✅ Dismiss touch target */}
         <TouchableOpacity
           activeOpacity={1}
           style={styles.backdropTouch}
           onPress={onClose}
         />
 
+        {/* ✅ Sliding panel */}
         <Animated.View
           style={[
             styles.panel,
             {
-              top: resolvedPanelTop,
-              bottom: resolvedPanelBottom,
+              top: resolvedTop,
+              bottom: resolvedBottom,
               width: panelWidth as ViewStyle["width"],
               maxWidth: panelMaxWidth,
               transform: [{ translateX }],
@@ -126,20 +132,19 @@ export default function AppSlideDrawer({
   );
 }
 
-const createStyles = (backdropColor: string) =>
-  StyleSheet.create({
-    root: {
-      flex: 1,
-    },
-    backdropLayer: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: backdropColor,
-    },
-    backdropTouch: {
-      ...StyleSheet.absoluteFillObject,
-    },
-    panel: {
-      position: "absolute",
-      left: 0,
-    },
-  });
+// ✅ Styles defined once at module level — zero runtime cost
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  backdropLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  backdropTouch: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  panel: {
+    position: "absolute",
+    left: 0,
+  },
+});

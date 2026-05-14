@@ -1,80 +1,9 @@
-// const BASE_CONSTRAINTS = `
-// RESPONSE FORMAT RULES (follow strictly):
-// 1. Length    → Match response length to question complexity
-// 2. Structure → Use markdown only when it genuinely aids clarity
-// 3. Lists     → Use bullets for 3+ parallel items only
-// 4. Code      → Always specify language in code blocks
-// 5. Closing   → Never end with "Let me know if..." or similar filler
-// 6. Tone      → Direct, confident, no unnecessary hedging
-// `.trim();
+type ModelId = "llama3" | "qwen" | "chatml" | "gemma2" | "phi3";
 
-// export const SYSTEM_PROMPTS = {
-//   llama3: (capabilities: string[]) =>
-//     `
-// You are ChatFree, a private on-device AI assistant.
+interface PromptOptions {
+  capabilities?: string[];
+}
 
-// ${BASE_CONSTRAINTS}
-
-// ACTIVE CAPABILITIES: ${capabilities.join(", ")}
-
-// HARD LIMITS:
-// - Context window: 1024 tokens — be concise
-// - Say "I don't know" instead of hallucinating
-// - Never fabricate URLs, citations, or code that doesn't run
-// `.trim(),
-
-//   qwen: (capabilities: string[]) =>
-//     `
-// You are a helpful AI assistant.
-
-// ${BASE_CONSTRAINTS}
-
-// CAPABILITIES: ${capabilities.join(", ")}
-// `.trim(),
-
-//   // SmolLM2 uses ChatML — keep prompt minimal, it's a small model
-//   chatml: (capabilities: string[]) =>
-//     `
-// You are a fast, helpful on-device assistant.
-
-// ${BASE_CONSTRAINTS}
-
-// CAPABILITIES: ${capabilities.join(", ")}
-
-// HARD LIMITS:
-// - Be brief — you are a small model with limited context
-// - Prefer short direct answers over long explanations
-// `.trim(),
-
-//   // Gemma 2 supports native system role — can handle richer instructions
-//   gemma2: (capabilities: string[]) =>
-//     `
-// You are ChatFree, a private on-device AI assistant.
-
-// ${BASE_CONSTRAINTS}
-
-// ACTIVE CAPABILITIES: ${capabilities.join(", ")}
-
-// HARD LIMITS:
-// - Say "I don't know" instead of hallucinating
-// - Never fabricate URLs or citations
-// `.trim(),
-
-//   // Phi-3.5 excels at structured tasks — lean into that
-//   phi3: (capabilities: string[]) =>
-//     `
-// You are ChatFree, a private on-device AI assistant specializing in structured reasoning and code.
-
-// ${BASE_CONSTRAINTS}
-
-// ACTIVE CAPABILITIES: ${capabilities.join(", ")}
-
-// HARD LIMITS:
-// - Prefer structured, step-by-step answers for complex tasks
-// - Say "I don't know" instead of hallucinating
-// - Never fabricate code that doesn't run
-// `.trim(),
-// };
 const BASE_CONSTRAINTS = `
 RESPONSE FORMAT RULES (follow strictly):
 1. Length    → Match response length to question complexity
@@ -95,82 +24,95 @@ OUTPUT FORMAT:
 - Never use raw HTML
 `.trim();
 
-export const SYSTEM_PROMPTS = {
-  llama3: (capabilities: string[]) =>
-    `
-You are ChatFree, a private on-device AI assistant.
+function formatCapabilities(capabilities: string[] = []): string {
+  if (!capabilities.length) return "None";
+  return capabilities
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function basePrompt(
+  identity: string,
+  capabilities: string[],
+  hardLimits?: string,
+): string {
+  return `
+${identity}
 
 ${BASE_CONSTRAINTS}
 
 ${MD_FORMAT}
 
-ACTIVE CAPABILITIES: ${capabilities.join(", ")}
+ACTIVE CAPABILITIES: ${formatCapabilities(capabilities)}
 
+${hardLimits ?? ""}
+`.trim();
+}
+
+export const SYSTEM_PROMPTS: Record<ModelId, (opts?: PromptOptions) => string> =
+  {
+    llama3: ({ capabilities = [] } = {}) =>
+      basePrompt(
+        "You are ChatFree, a private on-device AI assistant.",
+        capabilities,
+        `
 HARD LIMITS:
 - Context window: 1024 tokens — be concise
 - Say "I don't know" instead of hallucinating
 - Never fabricate URLs, citations, or code that doesn't run
 `.trim(),
+      ),
 
-  qwen: (capabilities: string[]) =>
-    `
-You are a helpful AI assistant.
+    qwen: ({ capabilities = [] } = {}) =>
+      basePrompt("You are a helpful AI assistant.", capabilities),
 
-${BASE_CONSTRAINTS}
-
-${MD_FORMAT}
-
-CAPABILITIES: ${capabilities.join(", ")}
-`.trim(),
-
-  // SmolLM2 uses ChatML — keep prompt minimal, it's a small model
-  chatml: (capabilities: string[]) =>
-    `
-You are ChatFree, a fast private on-device AI assistant.
-
-${BASE_CONSTRAINTS}
-
-${MD_FORMAT}
-
-CAPABILITIES:
-${capabilities.join(", ")}
-
+    chatml: ({ capabilities = [] } = {}) =>
+      basePrompt(
+        "You are ChatFree, a fast private on-device AI assistant.",
+        capabilities,
+        `
 HARD LIMITS:
 - Keep answers concise
 - Prefer direct answers over long explanations
 - Minimize unnecessary formatting
 `.trim(),
+      ),
 
-  // Gemma 2 supports native system role — can handle richer instructions
-  gemma2: (capabilities: string[]) =>
-    `
-You are ChatFree, a private on-device AI assistant.
-
-${BASE_CONSTRAINTS}
-
-${MD_FORMAT}
-
-ACTIVE CAPABILITIES: ${capabilities.join(", ")}
-
+    gemma2: ({ capabilities = [] } = {}) =>
+      basePrompt(
+        "You are ChatFree, a private on-device AI assistant.",
+        capabilities,
+        `
 HARD LIMITS:
 - Say "I don't know" instead of hallucinating
 - Never fabricate URLs or citations
 `.trim(),
+      ),
 
-  // Phi-3.5 excels at structured tasks — lean into that
-  phi3: (capabilities: string[]) =>
-    `
-You are ChatFree, a private on-device AI assistant specializing in structured reasoning and code.
-
-${BASE_CONSTRAINTS}
-
-${MD_FORMAT}
-
-ACTIVE CAPABILITIES: ${capabilities.join(", ")}
-
+    phi3: ({ capabilities = [] } = {}) =>
+      basePrompt(
+        "You are ChatFree, a private on-device AI assistant specializing in structured reasoning and code.",
+        capabilities,
+        `
 HARD LIMITS:
 - Prefer structured, step-by-step answers for complex tasks
 - Say "I don't know" instead of hallucinating
 - Never fabricate code that doesn't run
 `.trim(),
-};
+      ),
+  };
+
+/**
+ * Safe accessor with fallback
+ */
+export function getSystemPrompt(
+  model: ModelId,
+  options?: PromptOptions,
+): string {
+  const builder = SYSTEM_PROMPTS[model];
+  if (!builder) {
+    throw new Error(`Unsupported model: ${model}`);
+  }
+  return builder(options);
+}
