@@ -12,6 +12,8 @@ ChatFree is a local-first AI chat app built with Expo and React Native. It runs 
 - PDF attachment support with local text extraction
 - Voice input and assistant read-aloud
 - Light, dark, and system theme modes
+- Markdown-formatted responses with code syntax highlighting
+- Device-specific inference optimization
 - Model picker, onboarding, settings, chat drawer, regenerate, edit, copy, and share flows
 
 ## Tech Stack
@@ -23,6 +25,8 @@ ChatFree is a local-first AI chat app built with Expo and React Native. It runs 
 - Expo FileSystem and SecureStore for local persistence
 - Expo Document Picker and PDF text extraction
 - Expo Speech and Speech Recognition
+- `react-native-markdown-display` for rendering markdown responses
+- `react-native-device-info` for device-specific optimization
 - TypeScript and Expo ESLint
 
 ## Project Structure
@@ -68,13 +72,13 @@ constants/theme.ts   Dark/light app palettes
 
 The model catalog is defined in `src/data/models.ts`.
 
-| Model | Size | Format | Best For |
-| --- | ---: | --- | --- |
-| Llama 3.2 1B Instruct | 808 MB | Llama 3 | Small, general local chat |
+| Model                 |    Size | Format      | Best For                               |
+| --------------------- | ------: | ----------- | -------------------------------------- |
+| Llama 3.2 1B Instruct |  808 MB | Llama 3     | Small, general local chat              |
 | Qwen2.5 1.5B Instruct | 1700 MB | Qwen/ChatML | General conversation and summarization |
-| SmolLM2 1.7B Instruct | 1100 MB | ChatML | Fast on-device Q&A |
-| Gemma 2 2B Instruct | 1600 MB | Gemma 2 | Reasoning and summarization |
-| Phi-3.5 Mini Instruct | 2200 MB | Phi 3 | Reasoning, coding, detailed answers |
+| SmolLM2 1.7B Instruct | 1100 MB | ChatML      | Fast on-device Q&A                     |
+| Gemma 2 2B Instruct   | 1600 MB | Gemma 2     | Reasoning and summarization            |
+| Phi-3.5 Mini Instruct | 2200 MB | Phi 3       | Reasoning, coding, detailed answers    |
 
 Models are downloaded into the app document directory and selected model metadata is stored with SecureStore.
 
@@ -136,16 +140,16 @@ npm run build-apk
 
 ## Scripts
 
-| Script | Purpose |
-| --- | --- |
-| `npm run start` | Start Expo dev server |
-| `npm run android` | Run Android native build |
-| `npm run android:fast` | Install Android debug build with lint/tests skipped |
-| `npm run ios` | Run iOS native build |
-| `npm run web` | Start Expo web |
-| `npm run lint` | Run Expo ESLint |
-| `npm run build-apk` | Build Android release APK for arm64-v8a |
-| `npm run build-all` | Build Android release APK for all configured architectures |
+| Script                 | Purpose                                                    |
+| ---------------------- | ---------------------------------------------------------- |
+| `npm run start`        | Start Expo dev server                                      |
+| `npm run android`      | Run Android native build                                   |
+| `npm run android:fast` | Install Android debug build with lint/tests skipped        |
+| `npm run ios`          | Run iOS native build                                       |
+| `npm run web`          | Start Expo web                                             |
+| `npm run lint`         | Run Expo ESLint                                            |
+| `npm run build-apk`    | Build Android release APK for arm64-v8a                    |
+| `npm run build-all`    | Build Android release APK for all configured architectures |
 
 ## Development Checks
 
