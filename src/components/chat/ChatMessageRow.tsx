@@ -258,14 +258,11 @@ const MessageContent = ({
 
 const createMarkdownStyles = (appColors: any) => {
   return StyleSheet.create({
-    // body text
     body: {
       color: appColors.text.primary,
       fontSize: 15,
       lineHeight: 23,
     },
-
-    // headings
     heading1: {
       color: appColors.text.primary,
       fontSize: 22,
@@ -273,7 +270,6 @@ const createMarkdownStyles = (appColors: any) => {
       marginTop: 14,
       marginBottom: 6,
     },
-
     heading2: {
       color: appColors.text.primary,
       fontSize: 19,
@@ -281,7 +277,6 @@ const createMarkdownStyles = (appColors: any) => {
       marginTop: 12,
       marginBottom: 4,
     },
-
     heading3: {
       color: appColors.text.secondary,
       fontSize: 16,
@@ -289,7 +284,6 @@ const createMarkdownStyles = (appColors: any) => {
       marginTop: 10,
       marginBottom: 4,
     },
-
     heading4: {
       color: appColors.text.secondary,
       fontSize: 15,
@@ -297,7 +291,6 @@ const createMarkdownStyles = (appColors: any) => {
       marginTop: 8,
       marginBottom: 2,
     },
-
     heading5: {
       color: appColors.text.muted,
       fontSize: 14,
@@ -305,7 +298,6 @@ const createMarkdownStyles = (appColors: any) => {
       marginTop: 6,
       marginBottom: 2,
     },
-
     heading6: {
       color: appColors.text.muted,
       fontSize: 13,
@@ -313,30 +305,22 @@ const createMarkdownStyles = (appColors: any) => {
       marginTop: 4,
       marginBottom: 2,
     },
-
-    // inline text
     strong: {
       fontWeight: "700",
       color: appColors.text.primary,
     },
-
     em: {
       fontStyle: "italic",
       color: appColors.text.secondary,
     },
-
     s: {
       textDecorationLine: "line-through",
       color: appColors.text.muted,
     },
-
-    // links
     link: {
       color: appColors.bg.success,
       textDecorationLine: "underline",
     },
-
-    // inline code
     code_inline: {
       color: appColors.text.secondary,
       backgroundColor: appColors.bg.chip,
@@ -348,8 +332,6 @@ const createMarkdownStyles = (appColors: any) => {
       paddingHorizontal: 4,
       paddingVertical: 2,
     },
-
-    // fenced code block
     fence: {
       backgroundColor: appColors.bg.surface,
       borderColor: appColors.border.default,
@@ -359,7 +341,6 @@ const createMarkdownStyles = (appColors: any) => {
       paddingHorizontal: 14,
       marginVertical: 8,
     },
-
     code_block: {
       color: appColors.text.secondary,
       fontFamily: "monospace",
@@ -373,8 +354,6 @@ const createMarkdownStyles = (appColors: any) => {
       paddingHorizontal: 14,
       marginVertical: 8,
     },
-
-    // blockquote
     blockquote: {
       backgroundColor: appColors.bg.surfaceAlt,
       borderLeftColor: appColors.border.strong,
@@ -384,51 +363,39 @@ const createMarkdownStyles = (appColors: any) => {
       paddingVertical: 6,
       marginVertical: 6,
     },
-
-    // lists
     bullet_list: {
       marginVertical: 4,
     },
-
     ordered_list: {
       marginVertical: 4,
     },
-
     list_item: {
       marginBottom: 2,
       color: appColors.text.primary,
       fontSize: 15,
       lineHeight: 23,
     },
-
     bullet_list_icon: {
       color: appColors.text.muted,
       marginRight: 8,
       marginTop: 3,
     },
-
     ordered_list_icon: {
       color: appColors.text.muted,
       marginRight: 8,
       fontSize: 14,
     },
-
-    // horizontal rule
     hr: {
       backgroundColor: appColors.border.subtle,
       height: 1,
       marginVertical: 12,
     },
-
-    // paragraph spacing
     paragraph: {
       color: appColors.text.primary,
       fontSize: 15,
       lineHeight: 23,
       marginBottom: 4,
     },
-
-    // table
     table: {
       borderWidth: 1,
       borderColor: appColors.border.default,
@@ -437,80 +404,60 @@ const createMarkdownStyles = (appColors: any) => {
       marginVertical: 12,
       backgroundColor: appColors.bg.surface,
     },
-
     table_wrapper: {
       marginVertical: 10,
     },
-
     thead: {
       backgroundColor: appColors.bg.surfaceAlt,
     },
-
     tbody: {
       backgroundColor: appColors.bg.surface,
     },
-
     tr: {
       flexDirection: "row",
       borderBottomWidth: 1,
       borderBottomColor: appColors.border.subtle,
     },
-
     th: {
       flex: 1,
       minWidth: 120,
-
       paddingVertical: 12,
       paddingHorizontal: 14,
-
       backgroundColor: appColors.bg.surfaceAlt,
-
       borderRightWidth: 1,
       borderRightColor: appColors.border.default,
-
       borderBottomWidth: 1,
       borderBottomColor: appColors.border.default,
-
       color: appColors.text.primary,
       fontSize: 14,
       fontWeight: "700",
-
       textAlignVertical: "center",
     },
-
     td: {
       flex: 1,
       minWidth: 120,
-
       paddingVertical: 12,
       paddingHorizontal: 14,
-
       backgroundColor: appColors.bg.surface,
-
       borderRightWidth: 1,
       borderRightColor: appColors.border.subtle,
-
       borderBottomWidth: 1,
       borderBottomColor: appColors.border.subtle,
-
       color: appColors.text.secondary,
       fontSize: 14,
       lineHeight: 20,
-
       textAlignVertical: "center",
     },
-
     th_last: {
       borderRightWidth: 0,
     },
-
     td_last: {
       borderRightWidth: 0,
     },
   });
 };
 
-// ─── Assistant message content (StreamdownText) ───────────────────────────────
+// ─── Assistant message content with optimized streaming ────────────────────────
 
 const AssistantMessageContent = ({
   styles,
@@ -647,7 +594,6 @@ export const ChatMessageRow = React.memo(
               </View>
             ) : null}
 
-            {/* User messages stay as plain text – no markdown needed */}
             <MessageContent
               styles={styles}
               appColors={appColors}
@@ -693,16 +639,11 @@ export const ChatMessageRow = React.memo(
     return (
       <View style={styles.assistantRow}>
         <View style={styles.assistantBody}>
-          {/*
-           * StreamdownText handles all markdown rendering including fenced
-           * code blocks, inline code, headings, lists and LaTeX.
-           * isStreaming shows the "● Streaming…" indicator while tokens
-           * are still arriving.
-           */}
           <AssistantMessageContent
             styles={styles}
             appColors={appColors}
             text={item.text}
+            isStreaming={isLastAssistant}
             key={item.id}
           />
 

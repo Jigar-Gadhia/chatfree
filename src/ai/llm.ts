@@ -142,6 +142,13 @@ export const stopGeneration = () => {
   llamaContext?.stopCompletion();
 };
 
+/**
+ * Token Batching Configuration
+ * Batches tokens for smoother streaming performance
+ */
+const TOKEN_BATCH_SIZE = 32; // Min chars before flushing
+const TOKEN_FLUSH_INTERVAL_MS = 16; // ~60fps frame rate
+
 export const generateStream = async (
   history: { role: "user" | "assistant"; text: string }[],
   modelId: string,
@@ -154,50 +161,65 @@ export const generateStream = async (
 
   const formattedPrompt = formatPrompt(model, history);
 
-  // await llamaContext.completion(
-  //   {
-  //     prompt: formattedPrompt,
-  //     n_predict: model.nPredict ?? 512,
-  //     temperature: 0.7,
-  //     top_p: 0.9, // ✅ was 0.95 — tighter is better on 1B
-  //     top_k: 40,
-  //     min_p: 0.05, // ✅ added — prunes implausible tokens, great for 1B
-  //     repeat_penalty: 1.1,
-  //     repeat_last_n: 64, // ✅ added — window for repeat_penalty to look back
-  //     stop: [...LLAMA_3_STOP, ...(model.stop ?? [])], // ✅ full stop token set
-  //   },
-  //   (data: { token: string }) => {
-  //     if (data.token) onToken(data.token);
-  //   },
-  // );
-
   let buffer = "";
+  let lastFlushTime = Date.now();
+  let flushScheduled = false;
+
+  const flushBuffer = () => {
+    if (buffer.length > 0) {
+      onToken(buffer);
+      buffer = "";
+    }
+    flushScheduled = false;
+    lastFlushTime = Date.now();
+  };
+
+  const scheduleFlush = () => {
+    if (flushScheduled) return;
+    flushScheduled = true;
+
+    const now = Date.now();
+    const timeSinceLastFlush = now - lastFlushTime;
+
+    if (timeSinceLastFlush >= TOKEN_FLUSH_INTERVAL_MS) {
+      flushBuffer();
+    } else {
+      setTimeout(() => {
+        if (flushScheduled) {
+          flushBuffer();
+        }
+      }, TOKEN_FLUSH_INTERVAL_MS - timeSinceLastFlush);
+    }
+  };
 
   await llamaContext.completion(
     {
       prompt: formattedPrompt,
       n_predict: model.nPredict ?? 512,
       temperature: 0.7,
-      top_p: 0.9, // ✅ was 0.95 — tighter is better on 1B
+      top_p: 0.9,
       top_k: 40,
-      min_p: 0.05, // ✅ added — prunes implausible tokens, great for 1B
+      min_p: 0.05,
       repeat_penalty: 1.1,
-      repeat_last_n: 64, // ✅ added — window for repeat_penalty to look back
-      stop: [...LLAMA_3_STOP, ...(model.stop ?? [])], // ✅ full stop token set
+      repeat_last_n: 64,
+      stop: [...LLAMA_3_STOP, ...(model.stop ?? [])],
     },
     (data: { token: string }) => {
       if (!data.token) return;
 
       buffer += data.token;
 
-      if (buffer.length >= 32) {
-        onToken(buffer);
-        buffer = "";
+      // Flush when we have enough tokens OR time has passed
+      if (buffer.length >= TOKEN_BATCH_SIZE) {
+        flushBuffer();
+      } else {
+        scheduleFlush();
       }
     },
   );
 
+  // Final flush
   if (buffer.length > 0) {
-    onToken(buffer);
+    flushBuffer();
   }
 };
