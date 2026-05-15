@@ -24,24 +24,69 @@ export type MarkdownAST = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DEBOUNCE_MS = 100;
+const DEBOUNCE_MS = 32;
 const MIN_PARSE_CHARS = 50;
 const CODE_BLOCK_REGEX = /```(\w*)\n?([\s\S]*?)```/g;
 const PARTIAL_CODE_FENCE_REGEX = /```(\w*)\n?([\s\S]*?)$/;
 
 // Pre-process markdown with improved partial handling
-export const preprocessMarkdown = (text: string): string => {
-  // Fix incomplete fenced code blocks while streaming
-  const fenceCount = (text.match(/```/g) || []).length;
-  if (fenceCount % 2 !== 0) {
-    text += "\n```";
+// export const preprocessMarkdown = (text: string): string => {
+//   // Fix incomplete fenced code blocks while streaming
+//   const fenceCount = (text.match(/```/g) || []).length;
+//   if (fenceCount % 2 !== 0) {
+//     text += "\n```";
+//   }
+
+//   // Escape double dollar signs (LaTeX)
+//   return text.replace(/\$\$/g, "$");
+// };
+
+export const preprocessMarkdown = (
+  text: string,
+  isStreaming = false,
+): string => {
+  let processed = text.replace(/\$\$/g, "$");
+
+  // ONLY close fences for renderer safety
+  // but don't mutate original stream structure heavily
+  if (isStreaming) {
+    const fenceCount = (processed.match(/```/g) || []).length;
+
+    if (fenceCount % 2 !== 0) {
+      processed += "\n```streaming";
+    }
   }
 
-  // Escape double dollar signs (LaTeX)
-  return text.replace(/\$\$/g, "$");
+  return processed;
 };
 
 // Incremental parse - only parse new content
+// export const parseMarkdownIncremental = (
+//   fullText: string,
+//   previousAst: MarkdownAST | null,
+//   previousTextLength: number,
+// ): MarkdownAST => {
+//   const now = Date.now();
+
+//   // If text got shorter (edited), full reparse needed
+//   if (previousTextLength > fullText.length) {
+//     return parseMarkdown(fullText, now);
+//   }
+
+//   // If previous AST exists and text grew incrementally, try incremental parse
+//   if (previousAst && previousTextLength > 0) {
+//     const newContent = fullText.slice(previousTextLength);
+
+//     // Only do incremental if new content is substantial enough
+//     if (newContent.length >= MIN_PARSE_CHARS) {
+//       // For simplicity, we'll still do a full parse but skip expensive parts
+//       // A more sophisticated approach would use a diff-based parser
+//     }
+//   }
+
+//   return parseMarkdown(fullText, now);
+// };
+
 export const parseMarkdownIncremental = (
   fullText: string,
   previousAst: MarkdownAST | null,
@@ -49,23 +94,33 @@ export const parseMarkdownIncremental = (
 ): MarkdownAST => {
   const now = Date.now();
 
-  // If text got shorter (edited), full reparse needed
-  if (previousTextLength > fullText.length) {
+  if (!previousAst || previousTextLength === 0) {
     return parseMarkdown(fullText, now);
   }
 
-  // If previous AST exists and text grew incrementally, try incremental parse
-  if (previousAst && previousTextLength > 0) {
-    const newContent = fullText.slice(previousTextLength);
-
-    // Only do incremental if new content is substantial enough
-    if (newContent.length >= MIN_PARSE_CHARS) {
-      // For simplicity, we'll still do a full parse but skip expensive parts
-      // A more sophisticated approach would use a diff-based parser
-    }
+  // Text edited/shrunk → full parse
+  if (fullText.length < previousTextLength) {
+    return parseMarkdown(fullText, now);
   }
 
-  return parseMarkdown(fullText, now);
+  const appended = fullText.slice(previousTextLength);
+
+  // Small token additions → avoid full parse
+  if (appended.length < 24) {
+    return {
+      ...previousAst,
+      timestamp: now,
+    };
+  }
+
+  // Parse ONLY appended section
+  const appendedAst = parseMarkdown(appended, now);
+
+  return {
+    blocks: [...previousAst.blocks, ...appendedAst.blocks],
+    timestamp: now,
+    version: previousAst.version + 1,
+  };
 };
 
 // Parse markdown into blocks (text and code fences)
