@@ -17,7 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Markdown from "react-native-markdown-display";
+import AssistantMessageContent from "./AssistantMessageContent";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,13 +31,6 @@ type MessageContentProps = {
   text: string;
   textStyle: StyleProp<TextStyle>;
   showStreamingCursor?: boolean;
-};
-
-type AssistantMessageContentProps = {
-  styles: any;
-  appColors: AppColorsType;
-  text: string;
-  isStreaming?: boolean;
 };
 
 type ChatMessageRowProps = {
@@ -256,7 +249,7 @@ const MessageContent = ({
   );
 };
 
-const createMarkdownStyles = (appColors: any) => {
+export const createMarkdownStyles = (appColors: any) => {
   return StyleSheet.create({
     body: {
       color: appColors.text.primary,
@@ -455,75 +448,6 @@ const createMarkdownStyles = (appColors: any) => {
       borderRightWidth: 0,
     },
   });
-};
-
-// ─── Assistant message content with optimized streaming ────────────────────────
-
-const AssistantMessageContent = ({
-  styles,
-  appColors,
-  text,
-}: AssistantMessageContentProps) => {
-  const markdown = useMemo(() => {
-    let processed = text.replace(/\$\$/g, "$");
-
-    // Fix incomplete fenced code blocks while streaming
-    const fenceCount = (processed.match(/```/g) || []).length;
-
-    if (fenceCount % 2 !== 0) {
-      processed += "\n```";
-    }
-
-    return processed;
-  }, [text]);
-
-  const markdownStyles = useMemo(
-    () => createMarkdownStyles(appColors),
-
-    [appColors],
-  );
-
-  return (
-    <View style={styles.messageContentWrap}>
-      <View style={styles.assistantMarkdownWrap}>
-        <Markdown
-          style={markdownStyles}
-          rules={{
-            fence: (node) => {
-              const language = (node as any).sourceInfo || "CODE";
-              const content = node.content;
-
-              return (
-                <View key={`code-${node.index}`} style={styles.codeBlock}>
-                  <TouchableOpacity
-                    onPress={() => Clipboard.setStringAsync(content)}
-                    style={styles.codeCopyButton}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons
-                      name="copy-outline"
-                      size={13}
-                      color={appColors.icon.muted}
-                    />
-                  </TouchableOpacity>
-
-                  <Text style={styles.codeBlockLang}>
-                    {language.toUpperCase()}
-                  </Text>
-
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <Text style={styles.codeBlockText}>{content}</Text>
-                  </ScrollView>
-                </View>
-              );
-            },
-          }}
-        >
-          {markdown}
-        </Markdown>
-      </View>
-    </View>
-  );
 };
 
 // ─── ChatMessageRow ───────────────────────────────────────────────────────────
