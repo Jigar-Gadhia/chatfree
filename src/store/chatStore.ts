@@ -54,7 +54,7 @@ type ChatStore = {
       useWebSearch?: boolean;
       documentContext?: string;
       userAttachments?: MessageAttachment[];
-    }
+    },
   ) => Promise<void>;
   stopStreaming: () => void;
   clearChat: () => void;
@@ -106,7 +106,7 @@ const persistChats = async (chats: ChatSession[], activeChatId: string) => {
     await ensureChatDir();
     await FileSystem.writeAsStringAsync(
       CHAT_STATE_FILE,
-      JSON.stringify({ chats, activeChatId })
+      JSON.stringify({ chats, activeChatId }),
     );
   } catch (e) {
     console.log("Chat persist error", e);
@@ -141,12 +141,12 @@ const loadPersistedChatState = async (): Promise<{
 
 export const useChatStore = create<ChatStore>((set, get) => {
   const initialChat = makeChat();
-  const streamFlushIntervalMs = 32;
+  const streamFlushIntervalMs = 50;
 
   const appendAssistantChunk = (
     chatId: string,
     assistantMessageId: string,
-    chunk: string
+    chunk: string,
   ) => {
     if (!chunk) return;
 
@@ -159,7 +159,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
           messages: chat.messages.map((message) =>
             message.id === assistantMessageId
               ? { ...message, text: message.text + chunk }
-              : message
+              : message,
           ),
           updatedAt: Date.now(),
         };
@@ -172,7 +172,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
   const setAssistantSources = (
     chatId: string,
     assistantMessageId: string,
-    results: WebSearchResult[]
+    results: WebSearchResult[],
   ) => {
     const sources: MessageSource[] = results
       .map((result) => ({
@@ -195,7 +195,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
                   ...message,
                   sources,
                 }
-              : message
+              : message,
           ),
           updatedAt: Date.now(),
         };
@@ -243,7 +243,9 @@ export const useChatStore = create<ChatStore>((set, get) => {
     createNewChat: () => {
       stopGeneration();
 
-      const existingUntouchedChat = get().chats.find((chat) => isUntouchedNewChat(chat));
+      const existingUntouchedChat = get().chats.find((chat) =>
+        isUntouchedNewChat(chat),
+      );
       if (existingUntouchedChat) {
         set({
           activeChatId: existingUntouchedChat.id,
@@ -256,7 +258,12 @@ export const useChatStore = create<ChatStore>((set, get) => {
 
       const newChat = makeChat();
       const nextChats = sortChats([newChat, ...get().chats]);
-      set({ chats: nextChats, activeChatId: newChat.id, loading: false, streaming: false });
+      set({
+        chats: nextChats,
+        activeChatId: newChat.id,
+        loading: false,
+        streaming: false,
+      });
       persistChats(nextChats, newChat.id);
       return newChat.id;
     },
@@ -276,13 +283,24 @@ export const useChatStore = create<ChatStore>((set, get) => {
 
       if (nextChats.length === 0) {
         const freshChat = makeChat();
-        set({ chats: [freshChat], activeChatId: freshChat.id, loading: false, streaming: false });
+        set({
+          chats: [freshChat],
+          activeChatId: freshChat.id,
+          loading: false,
+          streaming: false,
+        });
         persistChats([freshChat], freshChat.id);
         return;
       }
 
-      const nextActiveId = activeChatId === chatId ? nextChats[0].id : activeChatId;
-      set({ chats: sortChats(nextChats), activeChatId: nextActiveId, loading: false, streaming: false });
+      const nextActiveId =
+        activeChatId === chatId ? nextChats[0].id : activeChatId;
+      set({
+        chats: sortChats(nextChats),
+        activeChatId: nextActiveId,
+        loading: false,
+        streaming: false,
+      });
       persistChats(sortChats(nextChats), nextActiveId);
     },
 
@@ -296,7 +314,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
               messages: [],
               updatedAt: Date.now(),
             }
-          : chat
+          : chat,
       );
 
       const sorted = sortChats(nextChats);
@@ -399,7 +417,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
               if (lastMessage.role === "user") {
                 const groundedUserPrompt = buildWebGroundedPrompt(
                   generationUserText,
-                  webResults
+                  webResults,
                 );
 
                 historyForGeneration = [
@@ -412,7 +430,9 @@ export const useChatStore = create<ChatStore>((set, get) => {
             setAssistantSources(chatId, botId, webResults);
           } catch (error) {
             const reason =
-              error instanceof Error ? error.message : "Unknown web search error.";
+              error instanceof Error
+                ? error.message
+                : "Unknown web search error.";
             console.log("Web search error", error);
 
             set((state) => {
@@ -427,7 +447,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
                           ...msg,
                           text: `Web search failed: ${reason}\n\nPlease try again in a moment.`,
                         }
-                      : msg
+                      : msg,
                   ),
                   updatedAt: Date.now(),
                 };
@@ -492,7 +512,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
               messages: chat.messages.map((msg) =>
                 msg.id === botId
                   ? { ...msg, text: "Error generating response." }
-                  : msg
+                  : msg,
               ),
               updatedAt: Date.now(),
             };
@@ -524,7 +544,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
 
           const assistantIndex = chat.messages.findIndex(
             (message) =>
-              message.id === assistantMessageId && message.role === "assistant"
+              message.id === assistantMessageId && message.role === "assistant",
           );
 
           if (assistantIndex <= 0) return chat;
@@ -602,7 +622,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
               messages: chat.messages.map((message) =>
                 message.id === assistantMessageId
                   ? { ...message, text: "Error generating response." }
-                  : message
+                  : message,
               ),
               updatedAt: Date.now(),
             };
@@ -637,7 +657,8 @@ export const useChatStore = create<ChatStore>((set, get) => {
           if (chat.id !== activeChatId) return chat;
 
           const userIndex = chat.messages.findIndex(
-            (message) => message.id === userMessageId && message.role === "user"
+            (message) =>
+              message.id === userMessageId && message.role === "user",
           );
           if (userIndex < 0) return chat;
 
@@ -728,7 +749,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
               messages: chat.messages.map((message) =>
                 message.id === targetAssistantId
                   ? { ...message, text: "Error generating response." }
-                  : message
+                  : message,
               ),
               updatedAt: Date.now(),
             };
@@ -754,4 +775,4 @@ export const useChatStore = create<ChatStore>((set, get) => {
   };
 });
 
-export type { ChatSession, Message, MessageSource, MessageAttachment };
+export type { ChatSession, Message, MessageAttachment, MessageSource };

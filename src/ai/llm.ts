@@ -20,61 +20,103 @@ interface LlamaDeviceConfig {
   flash_attn: boolean;
   use_mmap: boolean;
   use_mlock: boolean;
-  rope_freq_base: number;
+  // rope_freq_base: number;
 }
+
+// export const getDeviceOptimizedConfig =
+//   async (): Promise<LlamaDeviceConfig> => {
+//     const totalMemory = await DeviceInfo.getTotalMemory();
+
+//     const isLowRam =
+//       Platform.OS === "android" ? DeviceInfo.isLowRamDevice() : false;
+
+//     const ramGB = totalMemory / 1024 / 1024 / 1024;
+
+//     // CPU estimation heuristic
+//     let estimatedCores = 4;
+
+//     if (ramGB >= 12) {
+//       estimatedCores = 8;
+//     } else if (ramGB >= 8) {
+//       estimatedCores = 6;
+//     } else if (ramGB >= 4) {
+//       estimatedCores = 4;
+//     } else {
+//       estimatedCores = 2;
+//     }
+
+//     const isLowEnd = ramGB <= 4 || isLowRam;
+//     const isHighEnd = ramGB > 8;
+
+//     return {
+//       // safer context
+//       n_ctx: isLowEnd ? 1024 : isHighEnd ? 4096 : 2048,
+
+//       // conservative threading
+//       n_threads: Math.max(2, estimatedCores - 2),
+
+//       // huge source of crashes
+//       n_batch: isLowEnd ? 64 : isHighEnd ? 256 : 128,
+
+//       // Android GPU offloading unstable on many devices
+//       n_gpu_layers: Platform.OS === "ios" ? (isLowEnd ? 8 : 35) : 0,
+
+//       // disable on Android first
+//       flash_attn: Platform.OS === "ios" && !isLowEnd,
+
+//       use_mmap: true,
+
+//       // NEVER true on Android
+//       use_mlock: false,
+
+//       rope_freq_base: 500000,
+//     };
+//   };
 
 export const getDeviceOptimizedConfig =
   async (): Promise<LlamaDeviceConfig> => {
     const totalMemory = await DeviceInfo.getTotalMemory();
 
-    const isLowRam =
-      Platform.OS === "android" ? DeviceInfo.isLowRamDevice() : false;
-
     const ramGB = totalMemory / 1024 / 1024 / 1024;
 
-    // CPU estimation heuristic
-    let estimatedCores = 4;
+    const isLowRam =
+      Platform.OS === "android" ? await DeviceInfo.isLowRamDevice() : false;
 
-    if (ramGB >= 12) {
-      estimatedCores = 8;
-    } else if (ramGB >= 8) {
-      estimatedCores = 6;
-    } else if (ramGB >= 4) {
-      estimatedCores = 4;
-    } else {
-      estimatedCores = 2;
-    }
+    const lowEnd = ramGB <= 4 || isLowRam;
 
-    const isLowEnd = ramGB <= 4 || isLowRam;
-    const isHighEnd = ramGB > 8;
+    const midRange = ramGB > 4 && ramGB <= 8;
+
+    const highEnd = ramGB > 8;
 
     return {
-      n_ctx: isLowEnd ? 2048 : isHighEnd ? 8192 : 4096,
+      // CONTEXT
+      n_ctx: lowEnd ? 1024 : highEnd ? 4096 : 2048,
 
-      // Leave one core for UI
-      n_threads: Math.max(2, estimatedCores - 1),
+      // THREADS
+      n_threads: lowEnd ? 4 : highEnd ? 8 : 6,
 
-      n_batch: isLowEnd ? 256 : isHighEnd ? 1024 : 512,
+      // BATCH
+      n_batch: lowEnd ? 64 : highEnd ? 256 : 128,
 
+      // GPU OFFLOAD
       n_gpu_layers:
         Platform.OS === "ios"
-          ? isLowEnd
-            ? 20
-            : 99
-          : isLowEnd
+          ? highEnd
+            ? 40
+            : 20
+          : lowEnd
             ? 0
-            : isHighEnd
-              ? 50
-              : 35,
+            : highEnd
+              ? 24
+              : 12,
 
-      flash_attn: !isLowEnd,
+      // ATTENTION
+      flash_attn: !lowEnd,
 
+      // MEMORY
       use_mmap: true,
 
-      // safer on mobile
       use_mlock: false,
-
-      rope_freq_base: 500000,
     };
   };
 
@@ -112,6 +154,25 @@ export const generateStream = async (
 
   const formattedPrompt = formatPrompt(model, history);
 
+  // await llamaContext.completion(
+  //   {
+  //     prompt: formattedPrompt,
+  //     n_predict: model.nPredict ?? 512,
+  //     temperature: 0.7,
+  //     top_p: 0.9, // ✅ was 0.95 — tighter is better on 1B
+  //     top_k: 40,
+  //     min_p: 0.05, // ✅ added — prunes implausible tokens, great for 1B
+  //     repeat_penalty: 1.1,
+  //     repeat_last_n: 64, // ✅ added — window for repeat_penalty to look back
+  //     stop: [...LLAMA_3_STOP, ...(model.stop ?? [])], // ✅ full stop token set
+  //   },
+  //   (data: { token: string }) => {
+  //     if (data.token) onToken(data.token);
+  //   },
+  // );
+
+  let buffer = "";
+
   await llamaContext.completion(
     {
       prompt: formattedPrompt,
@@ -125,7 +186,18 @@ export const generateStream = async (
       stop: [...LLAMA_3_STOP, ...(model.stop ?? [])], // ✅ full stop token set
     },
     (data: { token: string }) => {
-      if (data.token) onToken(data.token);
+      if (!data.token) return;
+
+      buffer += data.token;
+
+      if (buffer.length >= 32) {
+        onToken(buffer);
+        buffer = "";
+      }
     },
   );
+
+  if (buffer.length > 0) {
+    onToken(buffer);
+  }
 };

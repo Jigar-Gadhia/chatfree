@@ -39,7 +39,9 @@ export const MODELS: Model[] = [
       bulletPointsEnabled: true,
       style: "concise",
     },
-    systemPrompt: SYSTEM_PROMPTS.llama3(["local processing", "PDF analysis"]),
+    systemPrompt: SYSTEM_PROMPTS.llama3({
+      capabilities: ["local processing", "PDF analysis"],
+    }),
   },
   {
     id: "qwen2_5-1_5b-instruct-q4_k_m",
@@ -68,10 +70,9 @@ export const MODELS: Model[] = [
       bulletPointsEnabled: true,
       style: "concise",
     },
-    systemPrompt: SYSTEM_PROMPTS.qwen([
-      "general conversation",
-      "summarization",
-    ]),
+    systemPrompt: SYSTEM_PROMPTS.qwen({
+      capabilities: ["general conversation", "summarization"],
+    }),
   },
   {
     id: "smollm2-1_7b-instruct-q4_k_m",
@@ -97,7 +98,9 @@ export const MODELS: Model[] = [
       bulletPointsEnabled: true,
       style: "concise",
     },
-    systemPrompt: SYSTEM_PROMPTS.chatml(["quick answers", "on-device tasks"]),
+    systemPrompt: SYSTEM_PROMPTS.chatml({
+      capabilities: ["quick answers", "on-device tasks"],
+    }),
   },
   {
     id: "gemma2-2b-instruct-q4_k_m",
@@ -123,7 +126,9 @@ export const MODELS: Model[] = [
       bulletPointsEnabled: true,
       style: "concise",
     },
-    systemPrompt: SYSTEM_PROMPTS.gemma2(["summarization", "reasoning"]),
+    systemPrompt: SYSTEM_PROMPTS.gemma2({
+      capabilities: ["summarization", "reasoning"],
+    }),
   },
   {
     id: "phi-3.5-mini-instruct-q4_k_m",
@@ -149,11 +154,9 @@ export const MODELS: Model[] = [
       bulletPointsEnabled: true,
       style: "detailed",
     },
-    systemPrompt: SYSTEM_PROMPTS.phi3([
-      "coding",
-      "reasoning",
-      "structured output",
-    ]),
+    systemPrompt: SYSTEM_PROMPTS.phi3({
+      capabilities: ["coding", "reasoning", "structured output"],
+    }),
   },
   // {
   //   id: "lfm2.5-1.2b-thinking-q4_k_m",
