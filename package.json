@@ -11,7 +11,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "build-apk": "cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a",
-    "build-all": "cd android && ./gradlew assembleRelease"
+    "build-all": "cd android && ./gradlew assembleRelease",
+    "clean": "rm -rf android/.cxx android/build android/app/build android/app/.cxx android/app/src/main/jni android/app/src/main/jniLibs && cd android && ./gradlew clean"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
